@@ -18,6 +18,7 @@ model User {
 model Deposit {
   id        String   @id @default(uuid())
   wallet    String
+  user      User     @relation(fields: [wallet], references: [wallet])
   amount    Float
   status    DepositStatus @default(pending)
   vaultName String?  
