@@ -1,0 +1,43 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  wallet    String   @unique
+  createdAt DateTime @default(now())
+  deposits  Deposit[]
+  withdrawals Withdrawal[]
+}
+
+model Deposit {
+  id        String   @id @default(uuid())
+  wallet    String
+  amount    Float
+  status    DepositStatus @default(pending)
+  vaultName String?  
+  txHash    String?
+  apy       Float?
+  claimable_rewards Float @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Withdrawal {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Float
+  txHash    String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+}
+
+enum DepositStatus {
+  pending
+  confirmed
+}

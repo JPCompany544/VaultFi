@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="ARTWORK" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #fff;
+      }
+
+      .cls-1, .cls-2 {
+        stroke: #000;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 4px;
+      }
+
+      .cls-2 {
+        fill: #00e676;
+      }
+    </style>
+  </defs>
+  <g>
+    <polygon class="cls-1" points="1076.54 459.69 758.59 459.69 758.59 551.47 400.9 344.96 758.59 138.46 758.59 230.24 1076.54 230.24 1076.54 459.69"/>
+    <polygon class="cls-1" points="758.59 551.46 758.59 689.15 679.1 643.25 679.1 597.36 400.9 436.75 400.9 344.96 758.59 551.46"/>
+    <rect class="cls-1" x="758.59" y="459.69" width="317.95" height="137.67"/>
+  </g>
+  <g>
+    <polygon class="cls-2" points="679.1 597.36 639.36 620.31 321.42 803.86 321.42 712.09 3.46 712.09 3.46 482.64 321.42 482.64 321.42 390.85 400.9 436.75 679.1 597.36"/>
+    <polygon class="cls-2" points="679.1 597.36 679.1 735.04 321.42 941.54 321.42 803.86 639.36 620.31 679.1 597.36"/>
+    <rect class="cls-2" x="3.46" y="712.09" width="317.95" height="137.67"/>
+  </g>
+</svg>
