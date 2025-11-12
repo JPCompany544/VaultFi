@@ -42,7 +42,7 @@ export default function AppLaunchPage() {
   }, [sidebarOpen]);
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] flex">
+    <div className="min-h-screen bg-[#0D0D0D] flex w-full max-w-full overflow-x-hidden">
       {/* Mobile Overlay */}
       <AnimatePresence>
         {sidebarOpen && (
@@ -165,26 +165,26 @@ export default function AppLaunchPage() {
         </header>
 
         {/* Main Content Area */}
-        <main className="flex-1 p-8">
-          <div className="max-w-6xl mx-auto">
+        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+          <div className="max-w-6xl w-full mx-auto">
             {activeItem === "defi" ? (
               <DeFiPage />
             ) : activeItem === "vaults" ? (
               <div className="space-y-8">
                 {/* Vaults Section */}
-                <div className="bg-[#1A1A1A] rounded-2xl p-8">
+                <div className="bg-[#1A1A1A] rounded-2xl p-6 sm:p-8">
                   <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between w-full">
                     {/* Left Side - Text Content */}
                     <div className="text-left flex-1 z-10">
-                      <h1 className="text-4xl font-bold mb-4" style={{ fontFamily: 'Faculty-Glyphic', color: 'rgb(189 196 251)' }}>
+                      <h1 className="text-3xl sm:text-4xl font-bold mb-4" style={{ fontFamily: 'Faculty-Glyphic', color: 'rgb(189 196 251)' }}>
                         Vaults
                       </h1>
-                      <p className="text-xl mb-8" style={{ color: 'rgb(189 196 251)' }}>
+                      <p className="text-base sm:text-xl mb-8" style={{ color: 'rgb(189 196 251)' }}>
                         Your Capital. Our expertise
                       </p>
                       
                       {/* Metrics Row */}
-                      <div className="flex items-center gap-12">
+                      <div className="flex flex-wrap items-center gap-6 sm:gap-12">
                         <div>
                           <p className="text-sm text-neutral-400 mb-1">TVL in Vaults</p>
                           <p className="text-2xl font-bold text-white">6,703.59 BTC</p>
@@ -200,8 +200,8 @@ export default function AppLaunchPage() {
                       </div>
                     </div>
                     
-                    {/* Right Side - Banner Logo */}
-                    <div className="vault-banner-right ml-auto hidden lg:flex lg:items-center lg:justify-end lg:pr-8" aria-hidden="true">
+                    {/* Right Side - Banner Logo (visible from sm and up) */}
+                    <div className="vault-banner-right ml-auto hidden sm:flex sm:items-center sm:justify-end sm:pr-6 lg:pr-8" aria-hidden="true">
                       {/* Force native <img> with explicit classes to avoid global img width rules */}
                       <img
                         alt="VaultFi Banner Logo"
@@ -218,12 +218,12 @@ export default function AppLaunchPage() {
 
                 {/* Access Multi-chain Vaults Section */}
                 <div className="mt-16">
-                  <h2 className="text-3xl font-bold text-center mb-12" style={{ fontFamily: 'Faculty-Glyphic', color: 'rgb(189 196 251)' }}>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-center mb-12" style={{ fontFamily: 'Faculty-Glyphic', color: 'rgb(189 196 251)' }}>
                     Access Multi-chain Vaults
                   </h2>
                   
                   {/* Vault Container */}
-                  <div className="bg-[#1A1A1A] rounded-2xl p-8">
+                  <div className="bg-[#1A1A1A] rounded-2xl p-6 sm:p-8">
                     {/* Top Section */}
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
                       {/* Left Side */}
@@ -313,7 +313,7 @@ className="w-9 h-9 sm:w-7 sm:h-7 object-contain brightness-0 invert"
 
                 {/* Additional Vault Sections */}
                 {VAULTS.slice(1).map((vault, index) => (
-                  <div key={index} className="bg-[#1A1A1A] rounded-2xl p-8">
+                  <div key={index} className="bg-[#1A1A1A] rounded-2xl p-6 sm:p-8">
                     {/* Top Section */}
                     <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-6">
                       {/* Left Side */}

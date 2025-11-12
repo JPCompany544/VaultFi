@@ -83,7 +83,7 @@ export default function Ecosystem() {
   }, []);
 
   return (
-    <section className="w-full bg-[#0d0d0d] py-20 px-8 md:px-16 lg:px-32">
+    <section className="w-full overflow-x-hidden bg-[#0d0d0d] py-20 px-8 md:px-16 lg:px-32">
       <div className="max-w-7xl mx-auto">
         <div className="mb-12">
           <div className="text-left">
@@ -144,7 +144,7 @@ export default function Ecosystem() {
                                   key={li}
                                   src={src}
                                   alt={`${card.title} logo ${li + 1}`}
-                                  className="h-8 w-auto object-contain"
+                                  className="h-8 w-auto max-w-full object-contain"
                                 />
                               ))}
                             </div>

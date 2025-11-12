@@ -31,10 +31,10 @@ export default function Home() {
     };
   }, [menuOpen]);
   return (
-    <main className="flex flex-col items-center w-full">
+    <main className="flex flex-col items-center w-full max-w-full overflow-x-hidden">
       {/* Header */}
-      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-30 bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/70 border-b border-white/10">
-        <div className="relative mx-auto max-w-6xl px-6 h-16 flex items-center justify-between text-white">
+      <header ref={headerRef} className="fixed top-0 left-0 right-0 z-30 bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/70 border-b border-white/10 overflow-x-hidden">
+        <div className="relative mx-auto max-w-6xl w-full px-6 h-16 flex items-center justify-between text-white">
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -154,7 +154,7 @@ export default function Home() {
                     key={i}
                     src={src}
                     alt="logo"
-                    className="h-8 w-auto object-contain opacity-90"
+                    className="h-8 w-auto max-w-full object-contain opacity-90"
                     loading="lazy"
                   />
                 ))}
@@ -395,18 +395,18 @@ export default function Home() {
 
                   <div className="mb-8">
                     <p className="uppercase text-sm text-gray-400 mb-4 tracking-wide">Trusted by</p>
-                    <div className="flex items-center space-x-8 text-white/70">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-medium">YZI</span>
-                        <span className="text-sm">Labs</span>
+                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-white/70 max-w-full">
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="text-base sm:text-lg font-medium">YZI</span>
+                        <span className="text-xs sm:text-sm">Labs</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-medium">BLOCKCHAIN</span>
-                        <span className="text-sm">CAPITAL</span>
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="text-base sm:text-lg font-medium">BLOCKCHAIN</span>
+                        <span className="text-xs sm:text-sm">CAPITAL</span>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg font-medium">OKX</span>
-                        <span className="text-sm">VENTURES</span>
+                      <div className="flex items-center gap-2 whitespace-nowrap">
+                        <span className="text-base sm:text-lg font-medium">OKX</span>
+                        <span className="text-xs sm:text-sm">VENTURES</span>
                       </div>
                     </div>
                   </div>

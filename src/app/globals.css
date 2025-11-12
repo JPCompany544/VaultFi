@@ -174,7 +174,7 @@
 }
 
 @media (max-width: 640px) {
-  .vault-banner-right { display: block !important; width: 100% !important; text-align: center !important; margin-top: 12px !important; }
+  .vault-banner-right { display: none !important; }
   .vault-banner-logo { max-width: 140px !important; max-height: 112px !important; margin: 12px auto 0 !important; animation: bannerFadeIn 500ms ease-out both; }
 }
 

@@ -207,20 +207,20 @@ export default function DeFiPage() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full max-w-full overflow-x-hidden">
       {/* Header Card - Elevated Section */}
       <div
-        className="relative rounded-2xl p-8 md:p-12 lg:py-10 lg:px-12 mb-8"
+        className="relative rounded-2xl p-4 sm:p-6 md:py-10 md:px-12 mb-4 md:mb-8"
         style={{
           backgroundColor: "#121212",
           boxShadow: "0px 0px 12px rgba(0, 0, 0, 0.3)",
         }}
       >
-        <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between gap-8">
+        <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-4 md:gap-8">
           {/* Left Column - Content */}
-          <div className="flex-1 text-center lg:text-left">
+          <div className="flex-1 text-center md:text-left">
             <h1
-              className="text-5xl lg:text-6xl font-medium mb-3"
+              className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-medium mb-1 sm:mb-2"
               style={{
                 fontFamily: "Faculty-Glyphic, sans-serif",
                 color: "#CFC8FF",
@@ -229,7 +229,7 @@ export default function DeFiPage() {
               DeFi
             </h1>
             <p
-              className="text-lg lg:text-xl"
+              className="text-sm sm:text-base md:text-lg lg:text-xl"
               style={{
                 color: "#A7A7A7",
                 fontFamily: "Faculty-Glyphic, sans-serif",
@@ -240,7 +240,7 @@ export default function DeFiPage() {
           </div>
 
           {/* Right Column - Empty Placeholder */}
-          <div className="flex-1 flex items-center justify-center min-h-[200px] lg:min-h-[240px]">
+          <div className="hidden md:flex md:flex-1 items-center justify-center">
             {/* Future 3D figure placeholder */}
           </div>
         </div>
@@ -289,14 +289,14 @@ export default function DeFiPage() {
       {/* Pool Header Section */}
       <div className="w-full mt-6">
         <div
-          className="w-full flex items-center justify-between px-6 py-4 rounded-xl overflow-x-auto"
+          className="w-full flex flex-nowrap md:flex-wrap items-center justify-start md:justify-between gap-4 md:gap-0 px-4 md:px-6 py-3 md:py-4 rounded-xl overflow-x-auto md:overflow-visible whitespace-nowrap md:whitespace-normal"
           style={{
             backgroundColor: "#141414",
           }}
         >
           {/* Pool Column */}
           <div
-            className="flex-1 text-left min-w-[100px] pool-header-text"
+            className="flex-none md:flex-1 text-left min-w-fit pool-header-text"
             style={{
               fontFamily: "Faculty-Glyphic, sans-serif",
               fontSize: "15px",
@@ -311,7 +311,7 @@ export default function DeFiPage() {
 
           {/* Reward Column with Info Icon */}
           <div
-            className="flex-1 flex items-center gap-1.5 min-w-[120px] pool-header-text"
+            className="flex-none md:flex-1 flex items-center gap-1.5 min-w-fit pool-header-text"
             style={{
               fontFamily: "Faculty-Glyphic, sans-serif",
               fontSize: "15px",
@@ -336,7 +336,7 @@ export default function DeFiPage() {
 
           {/* TVL Column */}
           <div
-            className="flex-1 text-right min-w-[80px] pool-header-text"
+            className="flex-none md:flex-1 text-left md:text-right min-w-fit pool-header-text"
             style={{
               fontFamily: "Faculty-Glyphic, sans-serif",
               fontSize: "15px",
@@ -351,7 +351,7 @@ export default function DeFiPage() {
 
           {/* APY Column */}
           <div
-            className="flex-1 text-right min-w-[80px] pool-header-text"
+            className="flex-none md:flex-1 text-left md:text-right min-w-fit pool-header-text"
             style={{
               fontFamily: "Faculty-Glyphic, sans-serif",
               fontSize: "15px",
@@ -366,7 +366,7 @@ export default function DeFiPage() {
 
           {/* Action Column */}
           <div
-            className="flex-1 text-right min-w-[100px] pool-header-text"
+            className="flex-none md:flex-1 text-left md:text-right min-w-fit pool-header-text"
             style={{
               fontFamily: "Faculty-Glyphic, sans-serif",
               fontSize: "15px",
@@ -388,8 +388,8 @@ export default function DeFiPage() {
             style={{ backgroundColor: "#141414" }}
           >
             {/* Parent Card Header */}
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/avalanche.svg"
                   alt="Avalanche"
@@ -408,7 +408,7 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                 <div
                   className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: "#7C5CFC", fontSize: "12px" }}
@@ -429,7 +429,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -441,7 +441,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -452,7 +452,7 @@ export default function DeFiPage() {
                 4.32%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -488,7 +488,7 @@ export default function DeFiPage() {
                 {avalanchePools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap md:flex-wrap items-center justify-between gap-3 md:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto md:overflow-visible whitespace-nowrap md:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -498,7 +498,7 @@ export default function DeFiPage() {
                     }}
                   >
                     {/* Left Section - Pool Info */}
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex items-center gap-3 min-w-fit">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                         <img
@@ -508,7 +508,7 @@ export default function DeFiPage() {
                         />
                       </div>
                       <div className="flex flex-col">
-                        <span
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -532,7 +532,7 @@ export default function DeFiPage() {
                     </div>
 
                     {/* Reward Badge */}
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-none md:flex-1 flex items-center min-w-fit">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -546,7 +546,7 @@ export default function DeFiPage() {
 
                     {/* TVL */}
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -559,7 +559,7 @@ export default function DeFiPage() {
 
                     {/* APY */}
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -571,7 +571,7 @@ export default function DeFiPage() {
                     </div>
 
                     {/* Action Button */}
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex justify-end min-w-fit">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -605,8 +605,8 @@ export default function DeFiPage() {
             style={{ backgroundColor: "#141414" }}
           >
             {/* Parent Card Header */}
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/BNB.svg"
                   alt="BNB Chain"
@@ -625,7 +625,7 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                 <div
                   className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: "#7C5CFC", fontSize: "12px" }}
@@ -646,7 +646,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -658,7 +658,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -669,7 +669,7 @@ export default function DeFiPage() {
                 5.45%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -705,7 +705,7 @@ export default function DeFiPage() {
                 {bnbPools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap md:flex-wrap items-center justify-between gap-3 md:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto md:overflow-visible whitespace-nowrap md:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -715,7 +715,7 @@ export default function DeFiPage() {
                     }}
                   >
                     {/* Left Section - Pool Info */}
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex items-center gap-3 min-w-fit">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         {/* Protocol Logo Placeholder */}
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
@@ -727,7 +727,7 @@ export default function DeFiPage() {
                         />
                       </div>
                       <div className="flex flex-col">
-                        <span
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -751,7 +751,7 @@ export default function DeFiPage() {
                     </div>
 
                     {/* Reward Badge */}
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-none md:flex-1 flex items-center min-w-fit">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -765,7 +765,7 @@ export default function DeFiPage() {
 
                     {/* TVL */}
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -778,7 +778,7 @@ export default function DeFiPage() {
 
                     {/* APY */}
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -790,7 +790,7 @@ export default function DeFiPage() {
                     </div>
 
                     {/* Action Button */}
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex justify-end min-w-fit">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -823,8 +823,8 @@ export default function DeFiPage() {
             className="w-full rounded-xl transition-all duration-300 ease-in-out overflow-hidden"
             style={{ backgroundColor: "#141414" }}
           >
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/soneium.jpg"
                   alt="Soneium"
@@ -843,7 +843,7 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                 <div
                   className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: "#7C5CFC", fontSize: "12px" }}
@@ -864,7 +864,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -876,7 +876,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -887,7 +887,7 @@ export default function DeFiPage() {
                 7.20%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -922,7 +922,7 @@ export default function DeFiPage() {
                 {soneiumPools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap md:flex-wrap items-center justify-between gap-3 md:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto md:overflow-visible whitespace-nowrap md:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -931,7 +931,7 @@ export default function DeFiPage() {
                       e.currentTarget.style.backgroundColor = "#1A1A1A";
                     }}
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex items-center gap-3 min-w-fit">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                         <img
@@ -941,7 +941,7 @@ export default function DeFiPage() {
                         />
                       </div>
                       <div className="flex flex-col">
-                        <span
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -964,7 +964,7 @@ export default function DeFiPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-none md:flex-1 flex items-center min-w-fit">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -977,7 +977,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -989,7 +989,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1000,7 +1000,7 @@ export default function DeFiPage() {
                       {pool.apy}
                     </div>
 
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex justify-end min-w-fit">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -1033,8 +1033,8 @@ export default function DeFiPage() {
             className="w-full rounded-xl transition-all duration-300 ease-in-out overflow-hidden"
             style={{ backgroundColor: "#141414" }}
           >
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/core.jpg"
                   alt="Core"
@@ -1053,7 +1053,7 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                 <div
                   className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: "#7C5CFC", fontSize: "12px" }}
@@ -1074,7 +1074,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1086,7 +1086,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1097,7 +1097,7 @@ export default function DeFiPage() {
                 13.28%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -1132,7 +1132,7 @@ export default function DeFiPage() {
                 {corePools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap sm:flex-wrap items-center justify-between gap-3 sm:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -1141,7 +1141,7 @@ export default function DeFiPage() {
                       e.currentTarget.style.backgroundColor = "#1A1A1A";
                     }}
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                         <img
@@ -1150,8 +1150,8 @@ export default function DeFiPage() {
                           className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full"
                         />
                       </div>
-                      <div className="flex flex-col">
-                        <span
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -1174,7 +1174,7 @@ export default function DeFiPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-1 basis-full sm:basis-auto flex items-center min-w-0">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -1187,7 +1187,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1199,7 +1199,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1210,7 +1210,7 @@ export default function DeFiPage() {
                       {pool.apy}
                     </div>
 
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -1243,8 +1243,8 @@ export default function DeFiPage() {
             className="w-full rounded-xl transition-all duration-300 ease-in-out overflow-hidden"
             style={{ backgroundColor: "#141414" }}
           >
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/merlin.jpg"
                   alt="Merlin"
@@ -1263,7 +1263,7 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                 <div
                   className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                   style={{ backgroundColor: "#7C5CFC", fontSize: "12px" }}
@@ -1284,7 +1284,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1296,7 +1296,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1307,7 +1307,7 @@ export default function DeFiPage() {
                 0.00%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -1342,7 +1342,7 @@ export default function DeFiPage() {
                 {merlinPools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap sm:flex-wrap items-center justify-between gap-3 sm:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -1351,7 +1351,7 @@ export default function DeFiPage() {
                       e.currentTarget.style.backgroundColor = "#1A1A1A";
                     }}
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                         <img
@@ -1360,8 +1360,8 @@ export default function DeFiPage() {
                           className="absolute top-0.5 left-0.5 w-3 h-3 rounded-full"
                         />
                       </div>
-                      <div className="flex flex-col">
-                        <span
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -1384,7 +1384,7 @@ export default function DeFiPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-1 basis-full sm:basis-auto flex items-center min-w-0">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -1397,7 +1397,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1409,7 +1409,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1420,7 +1420,7 @@ export default function DeFiPage() {
                       {pool.apy}
                     </div>
 
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -1453,8 +1453,8 @@ export default function DeFiPage() {
             className="w-full rounded-xl transition-all duration-300 ease-in-out overflow-hidden"
             style={{ backgroundColor: "#141414" }}
           >
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/BERA.png"
                   alt="Berachain"
@@ -1473,9 +1473,9 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex flex-col gap-1 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex flex-col gap-1 min-w-0">
                 <div
-                  className="px-2 py-1 rounded-lg text-white text-xs font-medium w-fit"
+                  className="px-2 py-1 rounded-lg text-xs font-medium w-fit"
                   style={{ backgroundColor: "#9B5CFF", fontSize: "12px" }}
                 >
                   4X Solv Points
@@ -1494,7 +1494,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1506,7 +1506,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1517,7 +1517,7 @@ export default function DeFiPage() {
                 7.71%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -1552,7 +1552,7 @@ export default function DeFiPage() {
                 {berachainPools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap md:flex-wrap items-center justify-between gap-3 md:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto md:overflow-visible whitespace-nowrap md:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -1561,12 +1561,12 @@ export default function DeFiPage() {
                       e.currentTarget.style.backgroundColor = "#1A1A1A";
                     }}
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex items-center gap-3 min-w-fit">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                       </div>
                       <div className="flex flex-col">
-                        <span
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -1589,7 +1589,7 @@ export default function DeFiPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center min-w-[120px]">
+                    <div className="flex-none md:flex-1 flex items-center min-w-fit">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -1602,7 +1602,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1614,7 +1614,7 @@ export default function DeFiPage() {
                     </div>
 
                     <div
-                      className="flex-1 text-right min-w-[80px]"
+                      className="flex-none md:flex-1 text-left md:text-right min-w-fit"
                       style={{
                         fontFamily: "Faculty-Glyphic, sans-serif",
                         fontSize: "15px",
@@ -1625,7 +1625,7 @@ export default function DeFiPage() {
                       {pool.apy}
                     </div>
 
-                    <div className="flex-1 flex justify-end min-w-[100px]">
+                    <div className="flex-none md:flex-1 flex justify-end min-w-fit">
                       <button
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all duration-200"
                         style={{
@@ -1658,14 +1658,15 @@ export default function DeFiPage() {
             className="w-full rounded-xl transition-all duration-300 ease-in-out overflow-hidden"
             style={{ backgroundColor: "#141414" }}
           >
-            <div className="w-full flex items-center justify-between px-6 py-4 cursor-pointer">
-              <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+            <div className="w-full flex flex-wrap items-center justify-between gap-3 sm:gap-4 px-4 sm:px-6 py-3 sm:py-4 cursor-pointer">
+              <div className="flex-1 flex items-center gap-3 min-w-0">
                 <img
                   src="/defi/sei.jpg"
                   alt="Sei"
                   className="object-contain w-9 h-9 sm:w-8 sm:h-8 rounded-full"
                   loading="lazy"
                 />
+
                 <span
                   style={{
                     fontFamily: "Faculty-Glyphic, sans-serif",
@@ -1678,9 +1679,9 @@ export default function DeFiPage() {
                 </span>
               </div>
 
-              <div className="flex-1 flex flex-col gap-1 min-w-[120px]">
+              <div className="flex-1 basis-full sm:basis-auto flex flex-col gap-1 min-w-0">
                 <div
-                  className="px-2 py-1 rounded-lg text-white text-xs font-medium w-fit"
+                  className="px-2 py-1 rounded-lg text-xs font-medium w-fit"
                   style={{ backgroundColor: "#9B5CFF", fontSize: "12px" }}
                 >
                   3X Solv Points
@@ -1699,7 +1700,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1711,7 +1712,7 @@ export default function DeFiPage() {
               </div>
 
               <div
-                className="flex-1 text-right min-w-[80px]"
+                className="flex-1 basis-1/2 sm:basis-auto text-left sm:text-right min-w-0"
                 style={{
                   fontFamily: "Faculty-Glyphic, sans-serif",
                   fontSize: "15px",
@@ -1722,7 +1723,7 @@ export default function DeFiPage() {
                 4.04%
               </div>
 
-              <div className="flex-1 flex justify-end min-w-[100px]">
+              <div className="flex-1 basis-full sm:basis-auto flex justify-end min-w-0">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200"
                   style={{ border: "1px solid #2C2C2C" }}
@@ -1757,7 +1758,7 @@ export default function DeFiPage() {
                 {seiPools.map((pool, index) => (
                   <div
                     key={index}
-                    className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md"
+                    className="w-full flex flex-nowrap sm:flex-wrap items-center justify-between gap-3 sm:gap-4 px-5 py-3.5 rounded-xl transition-all duration-200 shadow-md overflow-x-auto sm:overflow-visible whitespace-nowrap sm:whitespace-normal"
                     style={{ backgroundColor: "#1A1A1A" }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = "#232323";
@@ -1766,12 +1767,12 @@ export default function DeFiPage() {
                       e.currentTarget.style.backgroundColor = "#1A1A1A";
                     }}
                   >
-                    <div className="flex-1 flex items-center gap-3 min-w-[100px]">
+                    <div className="flex-1 flex items-center gap-3 min-w-0">
                       <div className="relative w-10 h-10 rounded-lg bg-neutral-800 flex items-center justify-center">
                         <div className="w-full h-full rounded-lg bg-gradient-to-br from-neutral-700 to-neutral-800" />
                       </div>
                       <div className="flex flex-col">
-                        <span
+                        <span className="truncate"
                           style={{
                             fontFamily: "Faculty-Glyphic, sans-serif",
                             fontSize: "15px",
@@ -1794,7 +1795,7 @@ export default function DeFiPage() {
                       </div>
                     </div>
 
-                    <div className="flex-1 flex items-center gap-1.5 min-w-[120px]">
+                    <div className="flex-1 basis-full sm:basis-auto flex items-center gap-1.5 min-w-0">
                       <div
                         className="px-2 py-1 rounded-lg text-white text-xs font-medium"
                         style={{
@@ -1804,6 +1805,7 @@ export default function DeFiPage() {
                       >
                         {pool.reward}
                       </div>
+
                       {pool.secondaryBadge && (
                         <div
                           className="px-2 py-1 rounded-lg text-xs font-medium"
