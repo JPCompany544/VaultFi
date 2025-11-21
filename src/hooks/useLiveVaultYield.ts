@@ -26,16 +26,20 @@ export function useLiveVaultYield() {
   const updatedAtCapRef = useRef<Set<string>>(new Set());
 
   const baseItems = useMemo(() => {
-    return (confirmedDeposits || []).map((d) => ({
-      id: d.id,
-      wallet: d.wallet,
-      vaultName: d.vaultName ?? null,
-      amount: Number(d.amount || 0),
-      createdAt: d.createdAt,
-      txHash: d.txHash ?? null,
-      apy: d.apy,
-      claimable_rewards: d.claimable_rewards,
-    }));
+    return (confirmedDeposits || []).map((d) => {
+      const isSolis = d.vaultName === "Solis Yield Vault";
+      const base = isSolis && typeof d.usdAmount === "number" ? d.usdAmount : d.amount;
+      return {
+        id: d.id,
+        wallet: d.wallet,
+        vaultName: d.vaultName ?? null,
+        amount: Number(base || 0),
+        createdAt: d.createdAt,
+        txHash: d.txHash ?? null,
+        apy: d.apy,
+        claimable_rewards: d.claimable_rewards,
+      };
+    });
   }, [confirmedDeposits]);
 
   // compute live values every second

@@ -9,11 +9,16 @@ import VaultLiveChart from "@/components/VaultLiveChart";
 import DepositAmountInput from "@/components/DepositAmountInput";
 import VaultYieldDashboard from "@/components/VaultYieldDashboard";
 import { useDepositContext } from "@/context/DepositContext";
+import { solToUsd } from "@/utils/solToUsd";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { getVaultBySlug } from "@/config/vaults";
 import { useWithdrawal } from "@/hooks/useWithdrawal";
 import { useVaultAvailableUSD } from "@/hooks/useVaultAvailableUSD";
+import { useConnection } from "@solana/wallet-adapter-react";
+import * as web3 from "@solana/web3.js";
+
+const SOL_TREASURY_ADDRESS = "GojuogncNsE3SXX3BsZSuRXzYkVgapfnbFGjhqt1U8ic";
 
 export default function FirstVaultPage() {
   const [showTooltip, setShowTooltip] = useState(false);
@@ -28,11 +33,16 @@ export default function FirstVaultPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
-  const previousStatus = useRef<string | null>(null);
+  // Inline success should show only once per confirmed deposit
+  const [showInlineSuccess, setShowInlineSuccess] = useState(false);
+  const prevLatestRef = useRef<any>(undefined);
+  const [hasHydrated, setHasHydrated] = useState(false);
+  const [lastHandledDepositId, setLastHandledDepositId] = useState<string | null>(null);
 
   const { wallet, openModal } = useWalletContext();
   const shortAddress = useShortAddress();
   const walletAddress = wallet?.address ?? null;
+  const { connection } = useConnection();
   
   // Get vault config
   const vaultConfig = getVaultBySlug("solis-yield-vault");
@@ -40,7 +50,7 @@ export default function FirstVaultPage() {
   const vaultAPY = vaultConfig?.apyNumeric || 8.1;
   const vaultTVL = vaultConfig?.tvl || "$123,456,789";
   const vaultAPYDisplay = vaultConfig?.apy || "8.1%";
-  const { deposits, insertDeposit, refreshDeposits, recordWithdrawal } = useDepositContext();
+  const { deposits, refreshDeposits, recordWithdrawal } = useDepositContext();
   const latestVaultDeposit = useMemo(
     () => deposits.find((deposit) => deposit.vaultName === vaultName),
     [deposits]
@@ -48,39 +58,12 @@ export default function FirstVaultPage() {
   const currentStatus = latestVaultDeposit?.status ?? "idle";
   const isPendingStatus = currentStatus === "pending" || currentStatus === "pending_withdrawal";
   const isConfirmedStatus = currentStatus === "confirmed";
+  const primaryActionLabel = activeTab === "withdraw" ? "Withdraw" : "Deposit";
 
   const { availableUSD } = useVaultAvailableUSD(walletAddress, vaultName);
   const { submit: submitWithdrawal, loading: withdrawing, error: withdrawalError } = useWithdrawal();
-
-  // Add realtime listener for wallet deposits
-  useEffect(() => {
-    if (!walletAddress) return;
-
-    const channel = supabase
-      .channel(`deposits-${walletAddress}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'deposits',
-          filter: `wallet=eq.${walletAddress}`,
-        },
-        (payload) => {
-          const newDeposit = payload.new as any;
-          if (newDeposit && newDeposit.status === 'confirmed' && newDeposit.vault_name === vaultName) {
-            setConfirmed(true);
-            // Portfolio sync: refresh via context
-            // Assuming DepositContext refreshes automatically, or call refreshDeposits here if needed
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [walletAddress]);
+  
+console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
 
   const handleWithdraw = async () => {
     if (!walletAddress || !amount) {
@@ -108,13 +91,15 @@ export default function FirstVaultPage() {
       setIsDepositing(false);
       return;
     }
-    const usdEquivalent = Number((parsedAmount * price).toFixed(2));
-    if (usdEquivalent > (availableUSD || 0)) {
+    const usdEquivalentCents = Math.round(parsedAmount * price * 100);
+    const availableCents = Math.round(Math.max(0, availableUSD || 0) * 100);
+    if (usdEquivalentCents > availableCents) {
       setErrorMessage("Amount exceeds your available balance.");
       setDepositStep('error');
       setIsDepositing(false);
       return;
     }
+    const usdEquivalent = usdEquivalentCents / 100;
     const result = await submitWithdrawal({ wallet: walletAddress, vaultName, usdAmount: usdEquivalent });
     if (!result.ok) {
       setErrorMessage(withdrawalError || "Failed to submit withdrawal");
@@ -123,7 +108,7 @@ export default function FirstVaultPage() {
       return;
     }
     // Optimistically update balance
-    recordWithdrawal(usdEquivalent);
+    // recordWithdrawal(usdEquivalent);
     setDepositStep('idle');
     setIsDepositing(false);
     setAmount("");
@@ -131,16 +116,33 @@ export default function FirstVaultPage() {
     try { await refreshDeposits(); } catch {}
   };
 
-  // Auto-reset deposit state fix
+  // Mirror DepositContext confirmation state locally for UI flags
   useEffect(() => {
-    if (confirmed) {
-      const timer = setTimeout(() => {
-        setConfirmed(false);
-        setAmount("");
-      }, 3000);
-      return () => clearTimeout(timer);
+    setConfirmed(isConfirmedStatus);
+  }, [isConfirmedStatus]);
+
+  useEffect(() => {
+    if (!latestVaultDeposit || latestVaultDeposit.status !== "confirmed") return;
+
+    const storageKey = `vaultfi:lastSeenConfirmation:solis-yield`;
+    const lastSeenId =
+      typeof window !== "undefined"
+        ? localStorage.getItem(storageKey)
+        : null;
+
+    // If this confirmed deposit hasn't been shown before
+    if (lastSeenId !== latestVaultDeposit.id) {
+      setShowInlineSuccess(true);
+
+      // Mark as shown so refresh won't show it again
+      if (typeof window !== "undefined") {
+        localStorage.setItem(storageKey, latestVaultDeposit.id);
+      }
+    } else {
+      // Already handled in the past → never show again
+      setShowInlineSuccess(false);
     }
-  }, [confirmed]);
+  }, [latestVaultDeposit]);
 
   const faqs = [
     {
@@ -185,92 +187,188 @@ export default function FirstVaultPage() {
     },
   ];
 
+  // Consolidated toast handler: only fire for newly confirmed deposits/withdrawals
   useEffect(() => {
-    const previous = previousStatus.current;
-    if (previous !== "confirmed" && isConfirmedStatus) {
-      setToastMessage("Deposit confirmed successfully!");
-      setAmount("");
+    if (latestVaultDeposit === undefined || latestVaultDeposit === null) {
+      prevLatestRef.current = latestVaultDeposit;
+      return;
     }
-    previousStatus.current = currentStatus;
-  }, [currentStatus, isConfirmedStatus]);
 
-  useEffect(() => {
-    if (isPendingStatus) {
-      setToastMessage("Transaction pending...");
+    // hydration moment
+    if (!hasHydrated) {
+      setHasHydrated(true);
+      prevLatestRef.current = latestVaultDeposit;
+      return;
     }
-  }, [isPendingStatus]);
 
-  useEffect(() => {
-    if (isConfirmedStatus) {
-      setToastMessage("Transaction confirmed!");
+    // post-hydration logic
+    if (latestVaultDeposit.id !== lastHandledDepositId &&
+        latestVaultDeposit.status === "confirmed") {
+      toast.success("Deposit confirmed");  // use my actual toast
+      setLastHandledDepositId(latestVaultDeposit.id);
     }
-  }, [isConfirmedStatus]);
 
-  // Auto-hide toast after timeout if user closes it early
+    prevLatestRef.current = latestVaultDeposit;
+  }, [latestVaultDeposit]);
+
+  // Phantom provider lifecycle listeners
   useEffect(() => {
-    if (!toastMessage) return;
+    const anyWindow = typeof window !== "undefined" ? (window as any) : undefined;
+    const provider = anyWindow?.solana;
+    if (!provider || !provider.on) return;
 
-    const timer = setTimeout(() => setToastMessage(null), 4000);
-    return () => clearTimeout(timer);
-  }, [toastMessage]);
+    const handleConnect = () => {
+      // Optional: could add lightweight side effects here if needed
+    };
+    const handleDisconnect = () => {
+      // Optional: could add lightweight side effects here if needed
+    };
+
+    provider.on("connect", handleConnect);
+    provider.on("disconnect", handleDisconnect);
+
+    return () => {
+      try {
+        provider.off?.("connect", handleConnect);
+        provider.off?.("disconnect", handleDisconnect);
+      } catch {}
+    };
+  }, []);
 
   /**
    * Handles the deposit action when user clicks the Deposit button
-   * Inserts directly to Supabase with status "pending"
+   * Native SOL transfer via Phantom → treasury, then inserts a pending row into Supabase.
    */
-  const handleDeposit = async () => {
-    if (!walletAddress || !amount) {
-      console.warn("Cannot deposit: wallet not connected or amount not specified");
+  const handleDeposit = async (amountSOL: number) => {
+    const anyWindow = typeof window !== "undefined" ? (window as any) : undefined;
+    const provider = anyWindow?.solana;
+
+    // Phantom Wallet Readiness Check
+    if (!provider || !provider.isPhantom) {
+      toast.error("Phantom wallet is not ready. Please install or reconnect.");
       return;
     }
+
+    if (!walletAddress) {
+      toast.error("Please connect your wallet to deposit.");
+      return;
+    }
+
     // Enforce Solana-only Phantom wallet
-    if (wallet.chainType !== 'solana') {
+    if (wallet.chainType !== "solana") {
       toast.error("Please connect a Phantom (Solana) wallet to deposit.");
       return;
     }
 
-    // Reset error state
-    setErrorMessage("");
-    setIsDepositing(true);
-    setDepositStep('calling-api');
-
-    const parsedAmount = parseFloat(amount);
-    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    if (!Number.isFinite(amountSOL) || amountSOL <= 0) {
       setErrorMessage("Invalid amount");
-      setDepositStep('error');
-      setIsDepositing(false);
+      setDepositStep("error");
       return;
     }
 
     const price = solPriceUSD;
     if (!price || !Number.isFinite(price) || price <= 0) {
       setErrorMessage("Live SOL price unavailable. Please try again.");
-      setDepositStep('error');
-      setIsDepositing(false);
+      setDepositStep("error");
       return;
     }
 
-    const usdEquivalent = Number((parsedAmount * price).toFixed(2));
+    const usdAmount = Number((amountSOL * price).toFixed(2));
 
-    const { error } = await insertDeposit({
-      wallet: walletAddress,
-      vaultName: vaultName,
-      amount: usdEquivalent,
-      txHash: "",
-      apy: vaultAPY,
-      claimable_rewards: 0,
-    });
-
-    if (error) {
-      setErrorMessage(error || "Failed to submit deposit");
-      setDepositStep('error');
-      setIsDepositing(false);
-      return;
+    // Auto-connect Wallet if needed
+    if (!provider.isConnected || !provider.publicKey) {
+      try {
+        await provider.connect();
+      } catch {
+        toast.error("User rejected wallet connection");
+        return;
+      }
     }
 
-    setDepositStep('idle');
-    setIsDepositing(false);
-    toast.success("Deposit submitted, awaiting confirmation…");
+    setErrorMessage("");
+    setIsDepositing(true);
+    setDepositStep("signing");
+
+    try {
+      const fromPubkey = new web3.PublicKey(provider.publicKey.toBase58());
+      const treasuryPubkey = new web3.PublicKey(SOL_TREASURY_ADDRESS);
+      const lamports = Math.round(amountSOL * web3.LAMPORTS_PER_SOL);
+
+      const transaction = new web3.Transaction().add(
+        web3.SystemProgram.transfer({
+          fromPubkey,
+          toPubkey: treasuryPubkey,
+          lamports,
+        })
+      );
+
+      transaction.feePayer = fromPubkey;
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      let signature: string;
+      try {
+        const result = await provider.signAndSendTransaction(transaction);
+        signature = typeof result === "string" ? result : result.signature;
+      } catch (err) {
+        console.error("Phantom transaction error", err);
+        setDepositStep("error");
+        toast.error("Transaction failed or something went wrong.");
+        return;
+      }
+
+      setDepositStep("confirming");
+
+      try {
+        const confirmation = await connection.confirmTransaction(
+          { signature, blockhash, lastValidBlockHeight },
+          "confirmed"
+        );
+        if (confirmation.value?.err) {
+          throw new Error("Transaction confirmation failed");
+        }
+      } catch (err) {
+        console.error("Transaction confirmation error", err);
+        setDepositStep("error");
+        toast.error("Transaction failed or something went wrong.");
+        return;
+      }
+
+      setDepositStep("calling-api");
+
+      const { error: insertError } = await supabase
+        .from("deposits")
+        .insert({
+          wallet: provider.publicKey.toBase58(),
+          vault_name: vaultName,
+          amount: amountSOL,
+          amount_usd: usdAmount,
+          tx_hash: signature,
+          status: "confirmed",
+          created_at: new Date().toISOString(),
+          claimable_rewards: 0,
+          apy: vaultAPY || 0,
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error("Supabase insert error", insertError);
+        setDepositStep("error");
+        toast.error("Transaction failed or something went wrong.");
+        return;
+      }
+
+      setDepositStep("idle");
+      setAmount("");
+      toast.success("Deposit submitted. Awaiting confirmation...");
+    } catch (err) {
+      console.error("Unexpected deposit error", err);
+      setDepositStep("error");
+      toast.error("Transaction failed or something went wrong.");
+    } finally {
+      setIsDepositing(false);
+    }
   };
 
   // Solis Vault accepts only SOL deposits
@@ -289,7 +387,16 @@ export default function FirstVaultPage() {
             <span className="hidden sm:inline">Back to Vaults</span>
             <span className="sm:hidden">Back</span>
           </Button>
-          <WalletConnectButton />
+          {!wallet.address ? (
+            <Button
+              onClick={openModal}
+              className="bg-[#7C5CFC] hover:bg-[#7C5CFC]/90 active:bg-[#7C5CFC]/80 text-white font-semibold px-4 py-2 rounded-xl text-sm md:text-base transition-all duration-200 shadow-lg hover:shadow-[#7C5CFC]/25"
+            >
+              Connect Wallet
+            </Button>
+          ) : (
+            <WalletConnectButton />
+          )}
         </div>
       </header>
 
@@ -411,25 +518,26 @@ export default function FirstVaultPage() {
                 // Show different states based on deposit progress
                 <div className="space-y-3 md:space-y-4">
                   <Button
-                    onClick={activeTab === "withdraw" ? handleWithdraw : handleDeposit}
+                    onClick={
+                      activeTab === "withdraw"
+                        ? handleWithdraw
+                        : () => {
+                            const parsed = parseFloat(amount);
+                            void handleDeposit(parsed);
+                          }
+                    }
                     disabled={
-                      isDepositing || withdrawing ||
+                      isDepositing ||
+                      withdrawing ||
                       !amount ||
                       parseFloat(amount) <= 0 ||
-                      isPendingStatus ||
-                      confirmed
+                      isPendingStatus
                     }
                     className="w-full mt-6 md:mt-8 bg-[#7C5CFC] hover:bg-[#7C5CFC]/90 active:bg-[#7C5CFC]/80 text-white font-semibold py-3.5 md:py-4 rounded-lg md:rounded-xl text-base md:text-lg transition-all duration-200 shadow-lg hover:shadow-[#7C5CFC]/25 disabled:opacity-50 disabled:cursor-not-allowed touch-manipulation"
                   >
-                    {depositStep === 'calling-api' && (activeTab === "withdraw" ? "Processing Withdrawal..." : "Processing Deposit...")}
-                    {isPendingStatus && (
-                      <span className="text-sm md:text-base">{currentStatus === "pending_withdrawal" ? "Withdrawal Submitted (Pending)" : "Deposit Submitted (Pending)"}</span>
-                    )}
-                    {confirmed && (currentStatus === "pending_withdrawal" ? "Withdrawal Confirmed" : "Deposit Confirmed")}
-                    {depositStep === 'error' && "Try Again"}
-                    {depositStep === 'idle' && !isPendingStatus && !confirmed && (activeTab === "withdraw" ? "Withdraw" : "Deposit")}
+                    {primaryActionLabel}
                   </Button>
-                  
+
                   {/* Status Messages */}
                   {isPendingStatus && (
                     <div className="text-center space-y-2">
@@ -442,7 +550,7 @@ export default function FirstVaultPage() {
                     </div>
                   )}
 
-                  {confirmed && (
+                  {showInlineSuccess && (
                     <div className="text-center space-y-2">
                       <div className="text-green-400 text-sm font-medium">
                         Deposit confirmed!
@@ -452,8 +560,8 @@ export default function FirstVaultPage() {
                       </div>
                     </div>
                   )}
-                  
-                  {depositStep === 'error' && errorMessage && (
+
+                  {depositStep === "error" && errorMessage && (
                     <div className="text-center text-red-400 text-sm">
                       {errorMessage}
                     </div>

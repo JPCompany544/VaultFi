@@ -1,55 +1,67 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
 import { useDepositContext } from "@/context/DepositContext";
 
 export function useVaultAvailableUSD(walletAddress: string | null, vaultName: string | null) {
-  const { totals } = useDepositContext();
+  const { confirmedDeposits, pendingWithdrawalAmount } = useDepositContext();
   const [baseAvailableUSD, setBaseAvailableUSD] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    async function run() {
+    function run() {
       try {
-        setLoading(true);
         setError(null);
-        setBaseAvailableUSD(0);
         if (!walletAddress || !vaultName) {
-          setLoading(false);
+          if (!cancelled) {
+            setBaseAvailableUSD(0);
+            setLoading(false);
+          }
           return;
         }
-        const { data, error } = await supabase
-          .from("deposits")
-          .select("amount, claimable_rewards, status, vault_name")
-          .eq("wallet", walletAddress)
-          .eq("vault_name", vaultName)
-          .eq("status", "confirmed");
-        if (error) throw error;
-        const total = (data || []).reduce((sum: number, row: any) => {
-          const amt = Number(row?.amount || 0);
+
+        const confirmedForVault = confirmedDeposits.filter(
+          (d) => d.wallet === walletAddress && d.vaultName === vaultName
+        );
+
+        const totalCents = confirmedForVault.reduce((sum: number, row: any) => {
+          const isSolis = row?.vaultName === "Solis Yield Vault";
+          const base = isSolis && typeof row?.usdAmount === "number" ? row.usdAmount : row?.amount;
+          const amt = Number(base || 0);
           const rew = Number(row?.claimable_rewards || 0);
-          return sum + (Number.isFinite(amt) ? amt : 0) + (Number.isFinite(rew) ? rew : 0);
+          const amtCents = Math.round((Number.isFinite(amt) ? amt : 0) * 100);
+          const rewCents = Math.round((Number.isFinite(rew) ? rew : 0) * 100);
+          return sum + amtCents + rewCents;
         }, 0);
-        if (!cancelled) setBaseAvailableUSD(Number(total.toFixed(2)));
+
+        const pendingCents = Math.round(
+          (Number.isFinite(pendingWithdrawalAmount) ? pendingWithdrawalAmount : 0) * 100
+        );
+        const availableCents = Math.max(0, totalCents - pendingCents);
+        const availableDollars = availableCents / 100;
+
+        if (!cancelled) {
+          setBaseAvailableUSD(availableDollars);
+          setLoading(false);
+        }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message || "Failed to load available balance");
-      } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) {
+          setError(e?.message || "Failed to load available balance");
+          setLoading(false);
+        }
       }
     }
     run();
     return () => { cancelled = true; };
-  }, [walletAddress, vaultName]);
+  }, [walletAddress, vaultName, confirmedDeposits, pendingWithdrawalAmount]);
 
   // Calculate available USD with optimistic withdrawal deduction
   const availableUSD = useMemo(() => {
-    // If we have a vault-specific balance, use context's totalBalance for this vault
-    // For simplicity, we'll use the totals.totalBalance which already accounts for pending withdrawals
-    return Math.max(0, totals.totalBalance);
-  }, [totals.totalBalance]);
+    const value = Number.isFinite(baseAvailableUSD) ? baseAvailableUSD : 0;
+    return Math.max(0, value);
+  }, [baseAvailableUSD]);
 
   return useMemo(() => ({ availableUSD, loading, error }), [availableUSD, loading, error]);
 }

@@ -5,75 +5,29 @@ import { useWalletContext } from "@/context/WalletContext";
 import { shortenAddress } from "@/utils/wallets";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
 import PortfolioActivityTable from "@/components/PortfolioActivityTable";
 import { usePortfolioActivity } from "@/hooks/usePortfolioActivity";
 import { useDepositContext } from "@/context/DepositContext";
+import { VAULTS } from "@/config/vaults";
 
 export default function PortfolioSection() {
   const { wallet } = useWalletContext();
-  const { totals } = useDepositContext();
-  const [deposits, setDeposits] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { deposits, totals, loading: depositsLoading } = useDepositContext();
   const [activityTab, setActivityTab] = useState<"deposits" | "withdrawals">("deposits");
   const [displayBalance, setDisplayBalance] = useState(0);
   const animationRef = useRef<number | null>(null);
   const { activeDeposits: activityDeposits, pendingWithdrawals: activityWithdrawals, loading: activityLoading, error: activityError, refetch: refetchActivity } = usePortfolioActivity(wallet.address);
 
-  const fetchDeposits = async () => {
-    if (!wallet.address) return;
-    setLoading(true);
-    const { data, error } = await supabase
-      .from('deposits')
-      .select('*')
-      .eq('wallet', wallet.address);
-    if (error) {
-      setError(error.message || "Failed to fetch deposits");
-    } else {
-      setDeposits(data || []);
-      setError(null);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchDeposits();
-  }, [wallet.address]);
-
-  // Realtime updates
-  useEffect(() => {
-    if (!wallet.address) return;
-
-    const channel = supabase
-      .channel('deposits-changes')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'deposits' },
-        (payload) => {
-          fetchDeposits();
-        }
-      )
-      .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'deposits' },
-        (payload) => {
-          if (payload.new.status === 'confirmed') {
-            fetchDeposits();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [wallet.address]);
-
   // Compute totals
   const confirmedDeposits = deposits.filter(d => d.status === 'confirmed');
-  const totalDeposits = confirmedDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+  const totalDeposits = confirmedDeposits.reduce((sum, d) => {
+    const isSolis = d.vaultName === "Solis Yield Vault";
+    const base = isSolis && typeof d.usdAmount === "number" ? d.usdAmount : d.amount;
+    return sum + (base || 0);
+  }, 0);
   const totalClaimableRewards = confirmedDeposits.reduce((sum, d) => sum + (d.claimable_rewards || 0), 0);
   const totalBalance = totals.totalBalance; // Use context totalBalance for instant updates
-  const uniqueVaults = [...new Set(confirmedDeposits.map(d => d.vault_name).filter(Boolean))];
+  const uniqueVaults = [...new Set(confirmedDeposits.map(d => d.vaultName).filter(Boolean))];
   const vaultCount = uniqueVaults.length;
 
   // Smooth animation for balance changes
@@ -113,10 +67,19 @@ export default function PortfolioSection() {
 
   // Group by vault_name
   const vaultData = uniqueVaults.map(vaultName => {
-    const vaultDeposits = confirmedDeposits.filter(d => d.vault_name === vaultName);
-    const depositAmount = vaultDeposits.reduce((sum, d) => sum + (d.amount || 0), 0);
+    const vaultDeposits = confirmedDeposits.filter(d => d.vaultName === vaultName);
+    const isSolis = vaultName === "Solis Yield Vault";
+    const depositAmount = vaultDeposits.reduce((sum, d) => {
+      const base = isSolis && typeof d.usdAmount === "number"
+        ? d.usdAmount
+        : Number(d.amount || 0);
+
+      const positive = base > 0 ? base : 0;
+
+      return sum + positive;
+    }, 0);
     const claimableRewards = vaultDeposits.reduce((sum, d) => sum + (d.claimable_rewards || 0), 0);
-    const apy = vaultDeposits[0]?.apy || 'N/A'; // Assume first deposit has apy
+    const apy = vaultDeposits[0]?.apy || 0; // Assume first deposit has apy
     return {
       vaultName,
       apy,
@@ -124,6 +87,15 @@ export default function PortfolioSection() {
       claimableRewards
     };
   });
+
+  const handleManageClick = (vaultName: string | null | undefined) => {
+    if (!vaultName) return;
+    const config = VAULTS.find((v) => v.name === vaultName);
+    if (!config) return;
+    if (typeof window !== "undefined") {
+      window.location.href = `/app/vaults/${config.slug}`;
+    }
+  };
 
   if (!wallet.address) {
     return (
@@ -190,11 +162,11 @@ export default function PortfolioSection() {
           </div>
           <div>
             <p className="text-sm text-neutral-400 mb-1">Total Balance</p>
-            <p className="text-2xl font-bold transition-all duration-300">{loading ? "—" : `$${displayBalance.toFixed(2)}`}</p>
+            <p className="text-2xl font-bold transition-all duration-300">{depositsLoading ? "—" : `$${displayBalance.toFixed(2)}`}</p>
           </div>
           <div>
             <p className="text-sm text-neutral-400 mb-1">Number of Vaults</p>
-            <p className="text-2xl font-bold">{loading ? "—" : vaultCount}</p>
+            <p className="text-2xl font-bold">{depositsLoading ? "—" : vaultCount}</p>
           </div>
           <div>
             <p className="text-sm text-neutral-400 mb-1">Total Earnings (24h)</p>
@@ -241,7 +213,12 @@ export default function PortfolioSection() {
                             <td className="py-4 px-8 text-right tabular-nums">${vault.depositAmount.toFixed(4)}</td>
                             <td className="py-4 pl-8 text-right tabular-nums">${vault.claimableRewards.toFixed(4)}</td>
                             <td className="py-4">
-                              <Button className="bg-white/10 border border-white/10 text-white hover:bg-white/20 transition ease-out duration-300 rounded-xl px-3 py-1">Manage</Button>
+                              <Button
+                                className="bg-white/10 border border-white/10 text-white hover:bg-white/20 transition ease-out duration-300 rounded-xl px-3 py-1"
+                                onClick={() => handleManageClick(vault.vaultName)}
+                              >
+                                Manage
+                              </Button>
                             </td>
                           </tr>
                         ))
@@ -262,7 +239,7 @@ export default function PortfolioSection() {
               <p className="text-gray-400 text-sm md:text-base text-center">
                 You haven’t staked any assets yet. Start staking to view your portfolio details.
               </p>
-              <Button className="px-6 py-2 mt-4 font-semibold text-white rounded-xl bg-gradient-to-r from-[#00FFD1] to-[#0074FF] hover:opacity-90 transition-all">
+              <Button className="px-6 py-2 mt-4 font-semibold text-white rounded-xl bg-[#7C5CFC] hover:bg-[#7C5CFC]/90 active:bg-[#7C5CFC]/80 transition-all">
                 Stake Now
               </Button>
             </div>
@@ -328,7 +305,7 @@ export default function PortfolioSection() {
                   variant="outline"
                   onClick={refetchActivity}
                   disabled={activityLoading}
-                  className="text-xs md:text-sm rounded-lg border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10 active:bg-emerald-500/20 transition-colors"
+                  className="bg-white/10 border border-white/10 text-white hover:bg-white/20 transition ease-out duration-300 rounded-xl px-3 py-1"
                 >
                   {activityLoading ? "Refreshing…" : "Refresh"}
                 </Button>

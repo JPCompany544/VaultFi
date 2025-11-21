@@ -1,13 +1,10 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { http, createConfig, WagmiProvider, useAccount, useDisconnect } from "wagmi";
-import { mainnet, bsc, polygon, arbitrum, avalanche, base, optimism } from "viem/chains";
-import { EVM_WALLETCONNECT_PROJECT_ID, ChainType, shortenAddress } from "@/utils/wallets";
 import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from "@solana/wallet-adapter-react";
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { coinbaseWallet, injected, walletConnect } from "@wagmi/connectors";
+import { ChainType, shortenAddress } from "@/utils/wallets";
 
 export type WalletInfo = {
   address: string | null;
@@ -22,42 +19,18 @@ export type WalletContextValue = {
   closeModal: () => void;
   setWalletAddress: (addr: string | null, chain: ChainType, label: string | null) => void;
   connectPhantom: () => Promise<void>;
-  connectBraavos: () => Promise<void>;
   disconnectWallet: () => Promise<void>;
-  registerWagmiDisconnect: (fn: (() => void) | null) => void;
   isModalOpen: boolean;
   network: string | null;
   connectionStatus: "disconnected" | "connecting" | "connected" | "error";
 };
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
-
-const wagmiConfig = createConfig({
-  chains: [mainnet, bsc, polygon, arbitrum, avalanche, base, optimism],
-  transports: {
-    [mainnet.id]: http(),
-    [bsc.id]: http(),
-    [polygon.id]: http(),
-    [arbitrum.id]: http(),
-    [avalanche.id]: http(),
-    [base.id]: http(),
-    [optimism.id]: http(),
-  },
-  connectors: [
-    coinbaseWallet({ appName: "VaultFi" }),
-    injected({ shimDisconnect: true }),
-    walletConnect({ projectId: EVM_WALLETCONNECT_PROJECT_ID })
-  ],
-  ssr: true,
-  autoConnect: true,
-});
-
 const queryClient = new QueryClient();
 
 export function WalletProviders({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<WalletInfo>({ address: null, chainType: null, label: null });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [wagmiDisconnectRef, setWagmiDisconnectRef] = useState<null | (() => void)>(null);
   const [network, setNetwork] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<"disconnected" | "connecting" | "connected" | "error">("disconnected");
 
@@ -67,10 +40,6 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
 
   const openModal = useCallback(() => setIsModalOpen(true), []);
   const closeModal = useCallback(() => setIsModalOpen(false), []);
-
-  const registerWagmiDisconnect = useCallback((fn: (() => void) | null) => {
-    setWagmiDisconnectRef(() => fn || null);
-  }, []);
 
   // Solana connect via Phantom
   const connectPhantom = useCallback(async () => {
@@ -172,13 +141,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
 
   // Unified disconnect across chains
   const disconnectWallet = useCallback(async () => {
-    try { wagmiDisconnectRef?.(); } catch {}
     try { await phantomDisconnectSafe(); } catch {}
-    try {
-      const anyWindow = window as any;
-      const braavos = anyWindow?.starknet_braavos || anyWindow?.braavos;
-      if (braavos?.disconnect) await braavos.disconnect();
-    } catch {}
     try {
       localStorage.removeItem("vaultfi_wallet_connected");
       localStorage.removeItem("vaultfi_wallet_address");
@@ -189,43 +152,21 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     setNetwork(null);
     setConnectionStatus("disconnected");
     setWalletAddress(null, null, null);
-  }, [wagmiDisconnectRef, setWalletAddress]);
-
-  // StarkNet connect via Braavos
-  const connectBraavos = useCallback(async () => {
-    try {
-      const anyWindow = window as any;
-      const braavos = anyWindow?.starknet_braavos || anyWindow?.braavos;
-      if (braavos) {
-        await braavos.enable({ starknetVersion: "v4" });
-        const accounts: string[] = braavos.selectedAddress ? [braavos.selectedAddress] : braavos.accounts || [];
-        const address = accounts[0] || null;
-        if (address) {
-          setWalletAddress(address, "starknet", "Braavos");
-          setIsModalOpen(false);
-        }
-      } else {
-        window.open("https://braavos.app/", "_blank");
-      }
-    } catch {}
   }, [setWalletAddress]);
 
   const ctx: WalletContextValue = useMemo(
-    () => ({ wallet: { ...wallet, network }, openModal, closeModal, setWalletAddress, connectPhantom, connectBraavos, disconnectWallet, registerWagmiDisconnect, isModalOpen, network, connectionStatus }),
-    [wallet, network, openModal, closeModal, setWalletAddress, connectPhantom, connectBraavos, disconnectWallet, registerWagmiDisconnect, isModalOpen, connectionStatus]
+    () => ({ wallet: { ...wallet, network }, openModal, closeModal, setWalletAddress, connectPhantom, disconnectWallet, isModalOpen, network, connectionStatus }),
+    [wallet, network, openModal, closeModal, setWalletAddress, connectPhantom, disconnectWallet, isModalOpen, connectionStatus]
   );
 
   const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
 
   return (
-    <ConnectionProvider endpoint="https://rpc.ankr.com/solana">
+    <ConnectionProvider endpoint="https://mainnet.helius-rpc.com/?api-key=8bc606d5-f7bf-4ec7-bb68-2e4411d7ca33">
       <SolanaWalletProvider wallets={wallets} autoConnect>
         <QueryClientProvider client={queryClient}>
           <WalletContext.Provider value={ctx}>
-            <WagmiProvider config={wagmiConfig}>
-              <WagmiAccountSync onRegisterDisconnect={registerWagmiDisconnect} />
-              {children}
-            </WagmiProvider>
+            {children}
           </WalletContext.Provider>
         </QueryClientProvider>
       </SolanaWalletProvider>
@@ -242,18 +183,6 @@ export function useWalletContext() {
 export function useShortAddress() {
   const { wallet } = useWalletContext();
   return shortenAddress(wallet.address || undefined);
-}
-
-function WagmiAccountSync({ onRegisterDisconnect }: { onRegisterDisconnect: (fn: (() => void) | null) => void }) {
-  const { address, status } = useAccount();
-  const { /* setWalletAddress, closeModal */ } = useWalletContext();
-  const { disconnect } = useDisconnect();
-  useEffect(() => {
-    onRegisterDisconnect(disconnect);
-    return () => onRegisterDisconnect(null);
-  }, [disconnect, onRegisterDisconnect]);
-  // EVM syncing disabled to enforce Solana-only connection
-  return null;
 }
 
 // Unified disconnect implementation

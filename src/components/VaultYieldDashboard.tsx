@@ -22,10 +22,10 @@ export default function VaultYieldDashboard() {
             <div className="text-xs md:text-sm text-neutral-500">{Math.round(d.progress * 100)}% of yield phase</div>
           </div>
           <div className="mt-2 text-white text-lg md:text-xl font-semibold">
-            ${d.currentValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            ${d.currentValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </div>
           <div className="mt-1 text-emerald-400 text-xs md:text-sm">
-            +${d.rewards.toLocaleString(undefined, { maximumFractionDigits: 2 })} ({(d.multiplier * 100).toFixed(1)}%)
+            +${d.rewards.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({(d.multiplier * 100).toFixed(1)}%)
           </div>
         </div>
       ))}

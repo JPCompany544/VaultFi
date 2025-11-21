@@ -58,7 +58,7 @@ export default function WalletConnectButton({ className = "" }: { className?: st
 
   return (
     <Button
-      className={`bg-gradient-to-r from-[#00FFD1] to-[#00BFA5] text-black font-semibold px-6 py-2 rounded-xl hover:from-[#00FFD1]/90 hover:to-[#00BFA5]/90 transition-all duration-200 shadow-lg ${className}`}
+      className={`bg-[#7C5CFC] hover:bg-[#7C5CFC]/90 active:bg-[#7C5CFC]/80 text-white font-semibold px-6 py-2 rounded-xl transition-all duration-200 shadow-lg ${className}`}
       onClick={openModal}
     >
       Connect Wallet
