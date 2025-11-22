@@ -17,7 +17,12 @@ export const metadata: Metadata = {
   title: "VaultFi Protocol",
   description: "A Solana-native multi-strategy, multi-asset vault infrastructure for smart yield routing",
   icons: {
-    icon: "/vaultfi-logo.png",
+    icon: [
+      { url: "/vaultfi-logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/vaultfi-logo.png", sizes: "16x16", type: "image/png" },
+    ],
+    shortcut: "/vaultfi-logo.png",
+    apple: "/vaultfi-logo.png",
   },
 };
 
