@@ -18,11 +18,11 @@ export const metadata: Metadata = {
   description: "A Solana-native multi-strategy, multi-asset vault infrastructure for smart yield routing",
   icons: {
     icon: [
-      { url: "/vaultfi-logo.png", sizes: "32x32", type: "image/png" },
-      { url: "/vaultfi-logo.png", sizes: "16x16", type: "image/png" },
+      { url: "/vault-list-logos/vaultfi-logo.png", sizes: "32x32", type: "image/png" },
+      { url: "/vault-list-logos/vaultfi-logo.png", sizes: "16x16", type: "image/png" },
     ],
-    shortcut: "/vaultfi-logo.png",
-    apple: "/vaultfi-logo.png",
+    shortcut: "/vault-list-logos/vaultfi-logo.png",
+    apple: "/vault-list-logos/vaultfi-logo.png",
   },
 };
 
