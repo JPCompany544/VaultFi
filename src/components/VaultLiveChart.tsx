@@ -28,7 +28,7 @@ export default function VaultLiveChart({ className = "" }: VaultLiveChartProps) 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Real-time chart simulates Solis vault TVL movement starting at $123,456,789
-  const BASE_TVL = 123_456_789;
+  const BASE_TVL = 423_456_879;
   const MIN_UPDATE_MS = 1000; // 1s
   const MAX_UPDATE_MS = 3000; // 3s
   const GROWTH_MIN = 0.0001; // +0.01%

@@ -62,7 +62,7 @@ export default function Home() {
           </nav>
 
           <Button
-            className="shrink-0 inline-flex items-center justify-center h-10 px-5 rounded-xl font-bold text-white bg-gradient-to-r from-[#00FFD1] to-[#0074FF] hover:opacity-90 transition-all"
+            className="shrink-0 inline-flex items-center justify-center h-10 px-5 rounded-xl font-bold text-white bg-[#7C5CFC] hover:bg-[#8E6FFF] hover:opacity-90 transition-all"
             onClick={() => window.open('/app', '_blank')}
           >
             Launch App

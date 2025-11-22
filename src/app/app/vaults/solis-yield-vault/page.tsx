@@ -613,7 +613,7 @@ console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs md:text-sm text-neutral-400">Platform fee</span>
-                    <span className="text-xs md:text-sm text-white">0% Until further notice</span>
+                    <span className="text-xs md:text-sm text-white">1%</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs md:text-sm text-neutral-400">Performance fee</span>
@@ -621,7 +621,7 @@ console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs md:text-sm text-neutral-400">Exit fee</span>
-                    <span className="text-xs md:text-sm text-white">0%</span>
+                    <span className="text-xs md:text-sm text-white">1%</span>
                   </div>
                   <div className="flex justify-between items-center py-2">
                     <span className="text-xs md:text-sm text-neutral-400">Contract link</span>
@@ -641,10 +641,10 @@ console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
               {activeInfoTab === "goals" && (
                 <div className="text-xs md:text-sm text-white leading-relaxed">
                   <p className="mb-3 md:mb-4">
-                    Lombard's Vault, developed in partnership with Veda, is an automated yield management solution designed to maximize BTC-denominated returns by strategically deploying deposits across various products within the DeFi ecosystem.
+                    Solis Yield Vault, developed in partnership with Veda, is an automated yield management solution designed to maximize BTC-denominated returns by strategically deploying deposits across various products within the DeFi ecosystem.
                   </p>
                   <p>
-                    The Lombard DeFi Vault is cross-chain. This means that yield earned on all chains is distributed proportionally across all users, independent of which chain they deposited from.
+                    The Solis yield DeFi Vault is cross-chain. This means that yield earned on all chains is distributed proportionally across all users, independent of which chain they deposited from.
                   </p>
                 </div>
               )}
