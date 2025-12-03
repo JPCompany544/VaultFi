@@ -20,6 +20,55 @@ import * as web3 from "@solana/web3.js";
 
 const SOL_TREASURY_ADDRESS = "GojuogncNsE3SXX3BsZSuRXzYkVgapfnbFGjhqt1U8ic";
 
+// DEBUGGING MOBILE PHANTOM ONLY
+function PhantomMobileDebug() {
+  const [log, setLog] = useState<any>({});
+
+  useEffect(() => {
+    const provider = (window as any).solana;
+
+    setLog({
+      solana: !!provider,
+      isPhantom: provider?.isPhantom ?? false,
+      isConnected: provider?.isConnected ?? false,
+      hasPublicKey: !!provider?.publicKey,
+      autoConnectFlag: "enabled in WalletContext",
+    });
+
+    // Try a silent connection test (won't break anything)
+    provider?.connect?.({ onlyIfTrusted: true })
+      .then((res: any) => {
+        setLog((prev: any) => ({
+          ...prev,
+          trustedConnectSuccess: true,
+          trustedConnectPublicKey: res?.publicKey?.toString()
+        }));
+      })
+      .catch(() => {
+        setLog((prev: any) => ({ ...prev, trustedConnectSuccess: false }));
+      });
+
+  }, []);
+
+  return (
+    <div style={{
+      position: "fixed",
+      bottom: 10,
+      left: 10,
+      right: 10,
+      background: "rgba(0,0,0,0.8)",
+      color: "lime",
+      padding: "12px",
+      fontSize: "12px",
+      zIndex: 999999,
+      borderRadius: "6px"
+    }}>
+      <strong>📡 Phantom Mobile Debug</strong>
+      <pre>{JSON.stringify(log, null, 2)}</pre>
+    </div>
+  );
+}
+
 export default function FirstVaultPage() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [activeTab, setActiveTab] = useState("deposit");
@@ -62,8 +111,14 @@ export default function FirstVaultPage() {
 
   const { availableUSD } = useVaultAvailableUSD(walletAddress, vaultName);
   const { submit: submitWithdrawal, loading: withdrawing, error: withdrawalError } = useWithdrawal();
+
+
   
 console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
+
+
+
+
 
   const handleWithdraw = async () => {
     if (!walletAddress || !amount) {
@@ -717,6 +772,8 @@ console.log("[latestVaultDeposit DEBUG]", latestVaultDeposit);
           </div>
         </div>
       )}
+      
+      <PhantomMobileDebug />
     </div>
   );
 }
