@@ -23,8 +23,14 @@ function connectWithPhantomDeepLink(): void {
   if (isIOS()) {
     // iOS + Non-Phantom browser: deep-link to Phantom
     const currentUrl = window.location.href;
-    const phantomDeepLink = `https://phantom.app/ul/browse/${encodeURIComponent(currentUrl)}`;
-    
+    const encoded = encodeURIComponent(currentUrl);
+
+    // Preferred native deep link
+    const nativeLink = `phantom://app/ul/browse?url=${encoded}`;
+
+    // Fallback https deep link
+    const fallback = `https://phantom.app/ul/browse?url=${encoded}`;
+
     // Show opening message
     const toastMsg = document.createElement('div');
     toastMsg.textContent = "Opening inside Phantom…";
@@ -43,8 +49,13 @@ function connectWithPhantomDeepLink(): void {
     `;
     document.body.appendChild(toastMsg);
     
-    // Redirect to Phantom deep-link
-    window.location.href = phantomDeepLink;
+    // Try native first
+    window.location.replace(nativeLink);
+
+    // If native fails, fallback after 300ms
+    setTimeout(() => {
+      window.location.href = fallback;
+    }, 300);
     
     // Clean up message after delay
     setTimeout(() => {
