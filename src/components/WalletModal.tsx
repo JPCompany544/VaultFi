@@ -7,22 +7,24 @@ import { X } from "lucide-react";
 function openInPhantomBrowser() {
   if (typeof window === "undefined") return;
 
-  const currentUrl = window.location.href; // use current page URL dynamically
-  const encodedUrl = encodeURIComponent(currentUrl); // encode full URL
-  const encodedRef = encodeURIComponent(currentUrl); // optional ref param
+  const currentUrl = window.location.href; // current vault page
+  const redirectParam = encodeURIComponent(currentUrl);
 
-  // Native scheme (preferred)
-  const nativeLink = `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`;
+  // Phantom-approved intermediate URL
+  const intermediateUrl = `https://vault-fi-3y63.vercel.app/app/phantom-redirect?redirect=${redirectParam}`;
+
+  // Native Phantom scheme
+  const nativeLink = `phantom://ul/browse/${encodeURIComponent(intermediateUrl)}`;
 
   // HTTPS fallback
-  const httpsFallback = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
+  const httpsFallback = `https://phantom.app/ul/browse/${encodeURIComponent(intermediateUrl)}`;
 
-  // Attempt to open native scheme
+  // Trigger native deep-link
   window.location.href = nativeLink;
 
-  // Fallback after short delay if Phantom not handling scheme
+  // Fallback if Phantom not handling scheme
   setTimeout(() => {
-    if (document.visibilityState === "visible") {
+    if (document.visibilityState === 'visible') {
       window.location.href = httpsFallback;
     }
   }, 800);
