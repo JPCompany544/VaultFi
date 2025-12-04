@@ -7,22 +7,22 @@ import { X } from "lucide-react";
 function openInPhantomBrowser() {
   if (typeof window === "undefined") return;
 
-  const currentUrl = window.location.href;
-  const origin = window.location.origin;
-  const encodedUrl = encodeURIComponent(currentUrl); // single encode
-  const encodedRef = encodeURIComponent(origin);
+  // Explicit target page to open inside Phantom's in-app browser
+  const targetUrl = "https://vault-fi-3y63.vercel.app/app/vaults/solis-yield-vault";
+  const encodedUrl = encodeURIComponent(targetUrl); // single encode
+  const encodedRef = encodeURIComponent(targetUrl);
 
-  // Primary: native scheme to open Phantom app + in-app browser
-  const nativeLink = `phantom://app/ul/browse?url=${encodedUrl}&ref=${encodedRef}`;
+  // Native scheme (preferred): open Phantom app + in-app browser on targetUrl
+  const nativeLink = `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
-  // Fallback: https deep link (used only if native scheme is not handled)
+  // HTTPS fallback: Phantom's documented browse deep link
   const httpsFallback = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
-  // Try native first to ensure the wallet opens
+  // Try native first
   window.location.href = nativeLink;
 
-  // If native scheme is not handled (e.g. Phantom not installed),
-  // the browser will stay and we can fall back to the https link.
+  // If native scheme is not handled (Phantom not installed / blocked),
+  // stay in browser and fall back to HTTPS link.
   setTimeout(() => {
     if (document.visibilityState === "visible") {
       window.location.href = httpsFallback;
