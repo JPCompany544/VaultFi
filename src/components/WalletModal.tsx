@@ -2,69 +2,35 @@
 
 import { useWalletContext } from "@/context/WalletContext";
 import { X } from "lucide-react";
+import toast from "react-hot-toast";
 
-// Phantom deep-link utilities for iOS mobile
-function isPhantomBrowser(): boolean {
-  return typeof window !== 'undefined' && (window as any).solana?.isPhantom === true;
-}
+// Utility functions for Phantom deep-link
+const openInPhantom = () => {
+  if (typeof window === "undefined") return;
 
-function isIOS(): boolean {
-  return typeof window !== 'undefined' && 
-    (/iPad|iPhone|iPod/.test(navigator.userAgent) || 
-     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
-}
+  const currentUrl = window.location.href;
 
-function connectWithPhantomDeepLink(): void {
-  if (isPhantomBrowser()) {
-    // Already in Phantom browser, proceed with normal connect
-    return;
-  }
-  
-  if (isIOS()) {
-    // iOS + Non-Phantom browser: deep-link to Phantom
-    const currentUrl = window.location.href;
-    const encoded = encodeURIComponent(currentUrl);
+  // Double-encode
+  const encodedOnce = encodeURIComponent(currentUrl);
+  const encodedTwice = encodeURIComponent(encodedOnce);
 
-    // Preferred native deep link
-    const nativeLink = `phantom://app/ul/browse?url=${encoded}`;
+  // Phantom deep-link
+  const phantomUrl = `https://phantom.app/ul/browse/${encodedTwice}`;
 
-    // Fallback https deep link
-    const fallback = `https://phantom.app/ul/browse?url=${encoded}`;
+  // Redirect
+  window.location.href = phantomUrl;
+};
 
-    // Show opening message
-    const toastMsg = document.createElement('div');
-    toastMsg.textContent = "Opening inside Phantom…";
-    toastMsg.style.cssText = `
-      position: fixed;
-      top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(124, 92, 252, 0.9);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 14px;
-      z-index: 999999;
-      font-family: system-ui, -apple-system, sans-serif;
-    `;
-    document.body.appendChild(toastMsg);
-    
-    // Try native first
-    window.location.replace(nativeLink);
+const isPhantomInAppBrowser = () => {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent.toLowerCase();
+  return ua.includes("phantom");
+};
 
-    // If native fails, fallback after 300ms
-    setTimeout(() => {
-      window.location.href = fallback;
-    }, 300);
-    
-    // Clean up message after delay
-    setTimeout(() => {
-      if (document.body.contains(toastMsg)) {
-        document.body.removeChild(toastMsg);
-      }
-    }, 3000);
-  }
-}
+const isIOS = () => {
+  if (typeof navigator === "undefined") return false;
+  return /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
+};
 
 export default function WalletModal() {
   const { isModalOpen, closeModal, connectPhantom } = useWalletContext();
@@ -75,18 +41,20 @@ export default function WalletModal() {
   const phantomInstalled = !!anyWindow?.solana?.isPhantom;
 
   const handlePhantomConnect = async () => {
-    if (isPhantomBrowser()) {
-      // Already in Phantom browser - use normal connect
-      await connectPhantom();
-    } else if (isIOS()) {
-      // iOS + Non-Phantom browser - use deep-link
-      connectWithPhantomDeepLink();
-      closeModal(); // Close modal after initiating deep-link
-    } else {
-      // Desktop/Android - use normal connect or show install
-      await connectPhantom();
-    }
-  };
+  // If already inside Phantom browser → normal connect flow
+  if (isPhantomInAppBrowser()) {
+    return connectPhantom(); // your existing connect function
+  }
+
+  // If on iOS Safari or Chrome → force phantom deep-link
+  if (isIOS()) {
+    toast("Opening in Phantom…");
+    return openInPhantom();
+  }
+
+  // Android or Desktop → normal connect
+  return connectPhantom();
+};
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -110,6 +78,15 @@ export default function WalletModal() {
                 Phantom (Solana){phantomInstalled ? '' : ' — Install'}
               </button>
             </div>
+            
+            {!isPhantomInAppBrowser() && (
+              <button
+                onClick={openInPhantom}
+                className="w-full mt-3 bg-purple-600 text-white rounded-xl py-3 font-medium"
+              >
+                Open in Phantom Browser
+              </button>
+            )}
           </div>
         </div>
       </div>
