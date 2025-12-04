@@ -2,35 +2,43 @@
 
 import { useWalletContext } from "@/context/WalletContext";
 import { X } from "lucide-react";
-import toast from "react-hot-toast";
 
-// Utility functions for Phantom deep-link
-const openInPhantom = () => {
+// --- Phantom Deep-Link Helper ---
+function openInPhantomBrowser() {
   if (typeof window === "undefined") return;
 
   const currentUrl = window.location.href;
+  const origin = window.location.origin;
+  const encodedUrl = encodeURIComponent(currentUrl); // single encode
+  const encodedRef = encodeURIComponent(origin);
 
-  // Double-encode
-  const encodedOnce = encodeURIComponent(currentUrl);
-  const encodedTwice = encodeURIComponent(encodedOnce);
+  // Primary: native scheme to open Phantom app + in-app browser
+  const nativeLink = `phantom://app/ul/browse?url=${encodedUrl}&ref=${encodedRef}`;
 
-  // Phantom deep-link
-  const phantomUrl = `https://phantom.app/ul/browse/${encodedTwice}`;
+  // Fallback: https deep link (used only if native scheme is not handled)
+  const httpsFallback = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
-  // Redirect
-  window.location.href = phantomUrl;
-};
+  // Try native first to ensure the wallet opens
+  window.location.href = nativeLink;
 
-const isPhantomInAppBrowser = () => {
-  if (typeof window === "undefined") return false;
-  const ua = navigator.userAgent.toLowerCase();
-  return ua.includes("phantom");
-};
+  // If native scheme is not handled (e.g. Phantom not installed),
+  // the browser will stay and we can fall back to the https link.
+  setTimeout(() => {
+    if (document.visibilityState === "visible") {
+      window.location.href = httpsFallback;
+    }
+  }, 800);
+}
 
-const isIOS = () => {
+function isIOS(): boolean {
   if (typeof navigator === "undefined") return false;
-  return /iphone|ipad|ipod/.test(navigator.userAgent.toLowerCase());
-};
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+function isPhantomBrowser(): boolean {
+  if (typeof window === "undefined") return false;
+  return (window as any)?.phantom?.solana?.isPhantom === true;
+}
 
 export default function WalletModal() {
   const { isModalOpen, closeModal, connectPhantom } = useWalletContext();
@@ -40,21 +48,22 @@ export default function WalletModal() {
 
   const phantomInstalled = !!anyWindow?.solana?.isPhantom;
 
-  const handlePhantomConnect = async () => {
-  // If already inside Phantom browser → normal connect flow
-  if (isPhantomInAppBrowser()) {
-    return connectPhantom(); // your existing connect function
-  }
+  const handlePhantomConnect = () => {
+    const insidePhantom = isPhantomBrowser();
+    const onIOS = isIOS();
 
-  // If on iOS Safari or Chrome → force phantom deep-link
-  if (isIOS()) {
-    toast("Opening in Phantom…");
-    return openInPhantom();
-  }
+    // Step 1: On iOS & not in Phantom → open current page in Phantom in-app browser
+    if (onIOS && !insidePhantom) {
+      openInPhantomBrowser();
+      return; // stop normal connect
+    }
 
-  // Android or Desktop → normal connect
-  return connectPhantom();
-};
+    // Step 2: Already inside Phantom → normal wallet adapter connect
+    connectPhantom()
+      .then(closeModal)
+      // eslint-disable-next-line no-console
+      .catch((e) => console.error("Phantom connect failed:", e));
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -78,15 +87,6 @@ export default function WalletModal() {
                 Phantom (Solana){phantomInstalled ? '' : ' — Install'}
               </button>
             </div>
-            
-            {!isPhantomInAppBrowser() && (
-              <button
-                onClick={openInPhantom}
-                className="w-full mt-3 bg-purple-600 text-white rounded-xl py-3 font-medium"
-              >
-                Open in Phantom Browser
-              </button>
-            )}
           </div>
         </div>
       </div>

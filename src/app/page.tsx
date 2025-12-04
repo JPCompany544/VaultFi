@@ -93,19 +93,19 @@ export default function Home() {
         </div>
       </header>
 
-      <section className="relative h-screen w-full overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
+    <section className="relative h-screen w-full overflow-hidden">
+      <video
+        autoPlay
+        loop
+        muted
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+      >
           {/* Use exact filename and extension from /public */}
           <source src="/Earth Rotating 1.MP4" type="video/mp4" />
-        </video>
+      </video>
 
-        {/* Overlay content */}
+      {/* Overlay content */}
         <div className="relative z-10 flex flex-col items-start justify-center h-full bg-black/40 text-white text-left">
           <div className="w-full max-w-6xl px-6 pt-16">
             {/* spacer for fixed header */}
@@ -115,15 +115,15 @@ export default function Home() {
             <Button className="bg-black border border-white/20 text-white font-semibold px-6 py-3 rounded-xl hover:bg-white/10">
               Our Manifesto
             </Button>
-          </div>
-          <motion.div
+      </div>
+        <motion.div
             className="w-full max-w-6xl px-6"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+        >
             {/* Primary CTA can remain here if desired in future; per request, only header button remains */}
-          </motion.div>
+        </motion.div>
         </div>
         {/* bottom logos - infinite marquee */}
         <div className="absolute bottom-0 left-0 right-0 z-10">
@@ -354,7 +354,7 @@ export default function Home() {
                 <div className="flex justify-start">
                   <Button className="bg-transparent border border-white/30 text-white hover:bg-white/10 hover:shadow-lg px-6 py-3 rounded-full transition-all duration-300">
                     Explore Strategies →
-                  </Button>
+                </Button>
                 </div>
               </CardContent>
             </Card>
@@ -475,7 +475,7 @@ export default function Home() {
                   />
                   <Button className="bg-gray-700 hover:bg-gray-600 hover:shadow-lg text-white px-8 py-4 rounded-full transition-all duration-300">
                     Subscribe
-                  </Button>
+        </Button>
                 </div>
                 <div className="text-sm text-gray-400 leading-relaxed space-y-1">
                   <p>Building the Future of the Bitcoin Economy.</p>
