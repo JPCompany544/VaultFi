@@ -1,20 +1,25 @@
-\"use client\";
+"use client";
 
-import { useEffect } from \"react\";
-import { useSearchParams } from \"next/navigation\";
+import { useEffect } from "react";
 
 export default function PhantomRedirectPage() {
-  const searchParams = useSearchParams();
-
   useEffect(() => {
-    const redirect = searchParams.get(\"redirect\");
-    if (redirect && typeof redirect === \"string\") {
-      // Redirect to actual vault page inside Phantom webview
-      window.location.href = decodeURIComponent(redirect);
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      if (redirect && typeof redirect === "string") {
+        // Redirect to actual vault page inside Phantom webview
+        window.location.href = decodeURIComponent(redirect);
+      }
+    } catch {
+      // swallow errors – this page is only a lightweight redirect
     }
-  }, [searchParams]);
+  }, []);
 
-  return <p className=\"text-center text-sm text-neutral-400 py-10\">Opening VaultFi in Phantom...</p>;
+  return (
+    <p className="text-center text-sm text-neutral-400 py-10">
+      Opening VaultFi in Phantom...
+    </p>
+  );
 }
-
 
