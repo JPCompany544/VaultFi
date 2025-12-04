@@ -3,26 +3,24 @@
 import { useWalletContext } from "@/context/WalletContext";
 import { X } from "lucide-react";
 
-// --- Phantom Deep-Link Helper ---
+// --- Phantom Deep-Link Helper (Dynamic) ---
 function openInPhantomBrowser() {
   if (typeof window === "undefined") return;
 
-  // Explicit target page to open inside Phantom's in-app browser
-  const targetUrl = "https://vault-fi-3y63.vercel.app/app/vaults/solis-yield-vault";
-  const encodedUrl = encodeURIComponent(targetUrl); // single encode
-  const encodedRef = encodeURIComponent(targetUrl);
+  const currentUrl = window.location.href; // use current page URL dynamically
+  const encodedUrl = encodeURIComponent(currentUrl); // encode full URL
+  const encodedRef = encodeURIComponent(currentUrl); // optional ref param
 
-  // Native scheme (preferred): open Phantom app + in-app browser on targetUrl
+  // Native scheme (preferred)
   const nativeLink = `phantom://ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
-  // HTTPS fallback: Phantom's documented browse deep link
+  // HTTPS fallback
   const httpsFallback = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
-  // Try native first
+  // Attempt to open native scheme
   window.location.href = nativeLink;
 
-  // If native scheme is not handled (Phantom not installed / blocked),
-  // stay in browser and fall back to HTTPS link.
+  // Fallback after short delay if Phantom not handling scheme
   setTimeout(() => {
     if (document.visibilityState === "visible") {
       window.location.href = httpsFallback;
