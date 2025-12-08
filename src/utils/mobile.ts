@@ -51,7 +51,7 @@ export function isPhantomBrowser(): boolean {
 
 /**
  * Open the current page in Phantom's in-app browser using deep-linking
- * Uses Phantom's universal link format for mobile app integration
+ * Uses custom URL scheme to trigger the Phantom app on mobile
  * 
  * @param url - Optional URL to open. Defaults to current window location
  */
@@ -61,16 +61,27 @@ export function openInPhantomBrowser(url?: string): void {
     // Use provided URL or current page URL
     const targetUrl = url || window.location.href;
 
-    // Phantom's universal link format requires BOTH url and ref parameters
-    // Format: https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-ref>
-    // Both the URL path segment AND the ref parameter must be encoded
+    // Encode the URL for the deep link
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // The URL goes in the path, ref goes in query params
-    const phantomDeepLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+    // Try custom URL scheme first (opens app directly)
+    // Format: phantom://browse?url=<encoded-url>
+    const customScheme = `phantom://browse?url=${encodedUrl}`;
 
-    // Redirect to Phantom via universal link
-    window.location.href = phantomDeepLink;
+    // Fallback to universal link (if custom scheme fails)
+    // Format: https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-ref>
+    const universalLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+
+    // Try to open with custom scheme first
+    window.location.href = customScheme;
+
+    // Fallback to universal link after a short delay if app doesn't open
+    setTimeout(() => {
+        // If page is still visible, the app didn't open - try universal link
+        if (document.visibilityState === 'visible') {
+            window.location.href = universalLink;
+        }
+    }, 500);
 }
 
 /**
