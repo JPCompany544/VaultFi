@@ -5,7 +5,8 @@ import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from "@sol
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChainType, shortenAddress } from "@/utils/wallets";
-import { shouldRedirectToPhantom, openInPhantomBrowser } from "@/utils/mobile";
+import { isMobile, isPhantomInApp } from "@/utils/mobile";
+import { openPhantom } from "@/utils/openPhantom";
 
 export type WalletInfo = {
   address: string | null;
@@ -45,9 +46,12 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   // Solana connect via Phantom
   const connectPhantom = useCallback(async () => {
     try {
-      // Mobile Check: Redirect to Phantom browser if on mobile outside Phantom app
-      if (shouldRedirectToPhantom()) {
-        openInPhantomBrowser();
+      // Mobile Check: Open Phantom app if on mobile outside Phantom app
+      const onMobile = isMobile();
+      const inPhantomApp = isPhantomInApp();
+
+      if (onMobile && !inPhantomApp) {
+        openPhantom();
         return;
       }
 

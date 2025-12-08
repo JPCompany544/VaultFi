@@ -9,7 +9,9 @@ import { SOL_TREASURY_ADDRESS } from "@/constants";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Wallet, DollarSign, Loader2, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
-import { shouldRedirectToPhantom, openInPhantomBrowser } from "@/utils/mobile";
+import { isMobile, isPhantomInApp } from "@/utils/mobile";
+import { openPhantom } from "@/utils/openPhantom";
+import { useAutoConnectInPhantom } from "@/hooks/useAutoConnectInPhantom";
 
 
 /**
@@ -39,6 +41,15 @@ export default function VaultDepositPage() {
     const [error, setError] = useState<string | null>(null);
     const [depositSuccess, setDepositSuccess] = useState(false); // Controls success modal
     const [txSignature, setTxSignature] = useState<string | null>(null);
+
+    // -- Auto-Connect in Phantom --
+    // When page loads inside Phantom after deep-link, auto-connect wallet
+    useAutoConnectInPhantom({
+        onConnect: async () => {
+            await connectPhantom();
+        },
+        enabled: true
+    });
 
     // -- 1. Fetch Live SOL Price --
     useEffect(() => {
@@ -84,11 +95,14 @@ export default function VaultDepositPage() {
         setError(null);
         setTxSignature(null);
 
-        // A. Mobile Check: Redirect to Phantom browser if on mobile
-        if (shouldRedirectToPhantom()) {
-            // Redirect mobile users to Phantom's in-app browser
-            // where wallet connection will work seamlessly
-            openInPhantomBrowser();
+        // A. Mobile Check: Open Phantom app if on mobile outside Phantom
+        const onMobile = isMobile();
+        const inPhantomApp = isPhantomInApp();
+
+        if (onMobile && !inPhantomApp) {
+            // Redirect mobile users to Phantom app
+            // Page will reload inside Phantom's in-app browser
+            openPhantom();
             return;
         }
 
@@ -352,9 +366,12 @@ export default function VaultDepositPage() {
                 {!wallet?.address ? (
                     <button
                         onClick={() => {
-                            // Check if mobile user should be redirected to Phantom browser
-                            if (shouldRedirectToPhantom()) {
-                                openInPhantomBrowser();
+                            // Check if mobile user should open Phantom app
+                            const onMobile = isMobile();
+                            const inPhantomApp = isPhantomInApp();
+
+                            if (onMobile && !inPhantomApp) {
+                                openPhantom();
                             } else {
                                 connectPhantom();
                             }

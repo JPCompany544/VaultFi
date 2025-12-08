@@ -1,7 +1,8 @@
 "use client";
 
 import { useWalletContext } from "@/context/WalletContext";
-import { isMobileDevice, isPhantomBrowser } from "@/utils/mobile";
+import { isMobile, isPhantomInApp } from "@/utils/mobile";
+import { openPhantom } from "@/utils/openPhantom";
 import { X } from "lucide-react";
 import { useMemo } from "react";
 
@@ -16,18 +17,15 @@ export default function WalletModal() {
   // Check if we should use deep-link (mobile & not in Phantom)
   const shouldUseDeepLink = useMemo(() => {
     if (typeof window === 'undefined') return false;
-    const onMobile = isMobileDevice();
-    const insidePhantom = isPhantomBrowser();
+    const onMobile = isMobile();
+    const insidePhantom = isPhantomInApp();
     return onMobile && !insidePhantom;
   }, []);
 
-  // Generate Phantom deep-link URL
-  const phantomDeepLink = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    const targetUrl = window.location.href;
-    const encodedUrl = encodeURIComponent(targetUrl);
-    return `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
-  }, []);
+  const handlePhantomDeepLink = () => {
+    // Open Phantom app via deep-link
+    openPhantom();
+  };
 
   const handlePhantomConnect = () => {
     // This is only called on desktop or when already inside Phantom
@@ -52,14 +50,14 @@ export default function WalletModal() {
           <div>
             <p className="text-sm text-neutral-400 mb-3">Solana</p>
             <div className="grid grid-cols-2 gap-3">
-              {/* Mobile: Use <a> tag for deep-linking, Desktop: Use button */}
+              {/* Mobile: Use button for deep-linking, Desktop: Use button for direct connect */}
               {shouldUseDeepLink ? (
-                <a
-                  href={phantomDeepLink}
-                  className={`w-full rounded-xl border border-neutral-800 text-white px-4 py-3 text-sm text-center ${phantomInstalled ? 'bg-neutral-900 hover:bg-neutral-800' : 'bg-neutral-950 hover:bg-neutral-900'}`}
+                <button
+                  onClick={handlePhantomDeepLink}
+                  className={`w-full rounded-xl border border-neutral-800 text-white px-4 py-3 text-sm ${phantomInstalled ? 'bg-neutral-900 hover:bg-neutral-800' : 'bg-neutral-950 hover:bg-neutral-900'}`}
                 >
                   Phantom (Solana){phantomInstalled ? '' : ' — Install'}
-                </a>
+                </button>
               ) : (
                 <button
                   onClick={handlePhantomConnect}
