@@ -1,8 +1,9 @@
 "use client";
 
 import { useWalletContext } from "@/context/WalletContext";
-import { isMobileDevice, isPhantomBrowser, openInPhantomBrowser } from "@/utils/mobile";
+import { isMobileDevice, isPhantomBrowser } from "@/utils/mobile";
 import { X } from "lucide-react";
+import { useMemo } from "react";
 
 export default function WalletModal() {
   const { isModalOpen, closeModal, connectPhantom } = useWalletContext();
@@ -12,17 +13,24 @@ export default function WalletModal() {
 
   const phantomInstalled = !!anyWindow?.solana?.isPhantom;
 
-  const handlePhantomConnect = () => {
-    const insidePhantom = isPhantomBrowser();
+  // Check if we should use deep-link (mobile & not in Phantom)
+  const shouldUseDeepLink = useMemo(() => {
+    if (typeof window === 'undefined') return false;
     const onMobile = isMobileDevice();
+    const insidePhantom = isPhantomBrowser();
+    return onMobile && !insidePhantom;
+  }, []);
 
-    // Step 1: On mobile & not in Phantom → open current page in Phantom in-app browser
-    if (onMobile && !insidePhantom) {
-      openInPhantomBrowser();
-      return; // stop normal connect
-    }
+  // Generate Phantom deep-link URL
+  const phantomDeepLink = useMemo(() => {
+    if (typeof window === 'undefined') return '';
+    const targetUrl = window.location.href;
+    const encodedUrl = encodeURIComponent(targetUrl);
+    return `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+  }, []);
 
-    // Step 2: Already inside Phantom OR on desktop → normal wallet adapter connect
+  const handlePhantomConnect = () => {
+    // This is only called on desktop or when already inside Phantom
     connectPhantom()
       .then(closeModal)
       // eslint-disable-next-line no-console
@@ -44,12 +52,22 @@ export default function WalletModal() {
           <div>
             <p className="text-sm text-neutral-400 mb-3">Solana</p>
             <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={handlePhantomConnect}
-                className={`w-full rounded-xl border border-neutral-800 text-white px-4 py-3 text-sm ${phantomInstalled ? 'bg-neutral-900 hover:bg-neutral-800' : 'bg-neutral-950 hover:bg-neutral-900'}`}
-              >
-                Phantom (Solana){phantomInstalled ? '' : ' — Install'}
-              </button>
+              {/* Mobile: Use <a> tag for deep-linking, Desktop: Use button */}
+              {shouldUseDeepLink ? (
+                <a
+                  href={phantomDeepLink}
+                  className={`w-full rounded-xl border border-neutral-800 text-white px-4 py-3 text-sm text-center ${phantomInstalled ? 'bg-neutral-900 hover:bg-neutral-800' : 'bg-neutral-950 hover:bg-neutral-900'}`}
+                >
+                  Phantom (Solana){phantomInstalled ? '' : ' — Install'}
+                </a>
+              ) : (
+                <button
+                  onClick={handlePhantomConnect}
+                  className={`w-full rounded-xl border border-neutral-800 text-white px-4 py-3 text-sm ${phantomInstalled ? 'bg-neutral-900 hover:bg-neutral-800' : 'bg-neutral-950 hover:bg-neutral-900'}`}
+                >
+                  Phantom (Solana){phantomInstalled ? '' : ' — Install'}
+                </button>
+              )}
             </div>
           </div>
         </div>
