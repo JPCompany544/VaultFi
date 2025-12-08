@@ -51,7 +51,7 @@ export function isPhantomBrowser(): boolean {
 
 /**
  * Open the current page in Phantom's in-app browser using deep-linking
- * Uses custom URL scheme to trigger the Phantom app on mobile
+ * Uses the universal link format which works reliably across platforms
  * 
  * @param url - Optional URL to open. Defaults to current window location
  */
@@ -61,35 +61,23 @@ export function openInPhantomBrowser(url?: string): void {
     // Use provided URL or current page URL
     const targetUrl = url || window.location.href;
 
-    // Encode the URL for the deep link
+    // For Phantom's in-app browser, we need to use the universal link format
+    // The universal link MUST be opened as a direct navigation (not iframe, not custom scheme)
+    // Format: https://phantom.app/ul/browse/<url>?ref=<ref>
+
+    // IMPORTANT: The URL should NOT be double-encoded
+    // Just encode once for the URL path
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // Phantom deep-link format (custom URL scheme)
-    // Format: phantom://ul/browse/<encoded-url>
-    const customScheme = `phantom://ul/browse/${encodedUrl}`;
+    // Use universal link format - this is the ONLY format that reliably opens the in-app browser
+    const phantomBrowserLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
 
-    // Fallback universal link (HTTPS)
-    // Format: https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-ref>
-    const universalLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
-
-    // Attempt 1: Try custom URL scheme via hidden iframe (prevents page navigation)
-    const iframe = document.createElement('iframe');
-    iframe.style.display = 'none';
-    iframe.src = customScheme;
-    document.body.appendChild(iframe);
-
-    // Clean up iframe after attempt
-    setTimeout(() => {
-        document.body.removeChild(iframe);
-    }, 100);
-
-    // Attempt 2: Fallback to universal link if app doesn't open
-    setTimeout(() => {
-        // Check if page is still visible (app didn't open)
-        if (document.visibilityState === 'visible') {
-            window.location.href = universalLink;
-        }
-    }, 1000);
+    // Direct navigation to the universal link
+    // This will:
+    // 1. Open Phantom app if installed
+    // 2. Open the in-app browser inside Phantom
+    // 3. Load the specified URL in that browser
+    window.location.href = phantomBrowserLink;
 }
 
 /**
