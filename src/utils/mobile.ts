@@ -64,24 +64,32 @@ export function openInPhantomBrowser(url?: string): void {
     // Encode the URL for the deep link
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // Try custom URL scheme first (opens app directly)
-    // Format: phantom://browse?url=<encoded-url>
-    const customScheme = `phantom://browse?url=${encodedUrl}`;
+    // Phantom deep-link format (custom URL scheme)
+    // Format: phantom://ul/browse/<encoded-url>
+    const customScheme = `phantom://ul/browse/${encodedUrl}`;
 
-    // Fallback to universal link (if custom scheme fails)
+    // Fallback universal link (HTTPS)
     // Format: https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-ref>
     const universalLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
 
-    // Try to open with custom scheme first
-    window.location.href = customScheme;
+    // Attempt 1: Try custom URL scheme via hidden iframe (prevents page navigation)
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = customScheme;
+    document.body.appendChild(iframe);
 
-    // Fallback to universal link after a short delay if app doesn't open
+    // Clean up iframe after attempt
     setTimeout(() => {
-        // If page is still visible, the app didn't open - try universal link
+        document.body.removeChild(iframe);
+    }, 100);
+
+    // Attempt 2: Fallback to universal link if app doesn't open
+    setTimeout(() => {
+        // Check if page is still visible (app didn't open)
         if (document.visibilityState === 'visible') {
             window.location.href = universalLink;
         }
-    }, 500);
+    }, 1000);
 }
 
 /**
