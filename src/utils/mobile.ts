@@ -51,7 +51,7 @@ export function isPhantomBrowser(): boolean {
 
 /**
  * Open the current page in Phantom's in-app browser using deep-linking
- * Uses Phantom's custom URL scheme for mobile app integration
+ * Uses Phantom's universal link format for mobile app integration
  * 
  * @param url - Optional URL to open. Defaults to current window location
  */
@@ -61,14 +61,15 @@ export function openInPhantomBrowser(url?: string): void {
     // Use provided URL or current page URL
     const targetUrl = url || window.location.href;
 
-    // Encode the URL for the deep link
+    // Phantom's universal link format requires BOTH url and ref parameters
+    // Format: https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-ref>
+    // Both the URL path segment AND the ref parameter must be encoded
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // Phantom's custom URL scheme for deep-linking
-    // Format: phantom://browse?url=<encoded-url>
-    const phantomDeepLink = `phantom://browse?url=${encodedUrl}`;
+    // The URL goes in the path, ref goes in query params
+    const phantomDeepLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
 
-    // Redirect to Phantom via custom URL scheme
+    // Redirect to Phantom via universal link
     window.location.href = phantomDeepLink;
 }
 
