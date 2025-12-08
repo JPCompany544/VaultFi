@@ -21,20 +21,37 @@ export function isMobileDevice(): boolean {
 /**
  * Detect if already running in Phantom's in-app browser
  * Phantom's browser adds specific properties to the window object
+ * Checks multiple indicators for more reliable detection
  */
 export function isPhantomBrowser(): boolean {
     if (typeof window === 'undefined') return false;
 
-    const solana = (window as any).solana;
+    const anyWindow = window as any;
 
-    // Check if Phantom is available and if we're in their mobile browser
-    // Phantom's in-app browser has the provider immediately available
-    return !!(solana?.isPhantom && solana?.isMobile);
+    // Method 1: Check window.solana (most common)
+    const solana = anyWindow.solana;
+    if (solana?.isPhantom && solana?.isMobile) {
+        return true;
+    }
+
+    // Method 2: Check window.phantom.solana (alternative property)
+    const phantomSolana = anyWindow.phantom?.solana;
+    if (phantomSolana?.isPhantom) {
+        return true;
+    }
+
+    // Method 3: Check user agent for Phantom browser
+    const userAgent = navigator.userAgent || '';
+    if (/Phantom/i.test(userAgent)) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
  * Open the current page in Phantom's in-app browser using deep-linking
- * Uses Phantom's browse deep-link feature
+ * Uses Phantom's custom URL scheme for mobile app integration
  * 
  * @param url - Optional URL to open. Defaults to current window location
  */
@@ -47,11 +64,11 @@ export function openInPhantomBrowser(url?: string): void {
     // Encode the URL for the deep link
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // Phantom's browse deep-link format
-    // https://phantom.app/ul/browse/<encoded-url>?ref=<encoded-url>
-    const phantomDeepLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedUrl}`;
+    // Phantom's custom URL scheme for deep-linking
+    // Format: phantom://browse?url=<encoded-url>
+    const phantomDeepLink = `phantom://browse?url=${encodedUrl}`;
 
-    // Redirect to Phantom
+    // Redirect to Phantom via custom URL scheme
     window.location.href = phantomDeepLink;
 }
 

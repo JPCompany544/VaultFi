@@ -1,44 +1,8 @@
 "use client";
 
 import { useWalletContext } from "@/context/WalletContext";
+import { isMobileDevice, isPhantomBrowser, openInPhantomBrowser } from "@/utils/mobile";
 import { X } from "lucide-react";
-
-// --- Phantom Deep-Link Helper (Dynamic) ---
-function openInPhantomBrowser() {
-  if (typeof window === "undefined") return;
-
-  const currentUrl = window.location.href; // current vault page
-  const redirectParam = encodeURIComponent(currentUrl);
-
-  // Phantom-approved intermediate URL
-  const intermediateUrl = `https://vault-fi-3y63.vercel.app/app/phantom-redirect?redirect=${redirectParam}`;
-
-  // Native Phantom scheme
-  const nativeLink = `phantom://ul/browse/${encodeURIComponent(intermediateUrl)}`;
-
-  // HTTPS fallback
-  const httpsFallback = `https://phantom.app/ul/browse/${encodeURIComponent(intermediateUrl)}`;
-
-  // Trigger native deep-link
-  window.location.href = nativeLink;
-
-  // Fallback if Phantom not handling scheme
-  setTimeout(() => {
-    if (document.visibilityState === 'visible') {
-      window.location.href = httpsFallback;
-    }
-  }, 800);
-}
-
-function isIOS(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-function isPhantomBrowser(): boolean {
-  if (typeof window === "undefined") return false;
-  return (window as any)?.phantom?.solana?.isPhantom === true;
-}
 
 export default function WalletModal() {
   const { isModalOpen, closeModal, connectPhantom } = useWalletContext();
@@ -50,15 +14,15 @@ export default function WalletModal() {
 
   const handlePhantomConnect = () => {
     const insidePhantom = isPhantomBrowser();
-    const onIOS = isIOS();
+    const onMobile = isMobileDevice();
 
-    // Step 1: On iOS & not in Phantom → open current page in Phantom in-app browser
-    if (onIOS && !insidePhantom) {
+    // Step 1: On mobile & not in Phantom → open current page in Phantom in-app browser
+    if (onMobile && !insidePhantom) {
       openInPhantomBrowser();
       return; // stop normal connect
     }
 
-    // Step 2: Already inside Phantom → normal wallet adapter connect
+    // Step 2: Already inside Phantom OR on desktop → normal wallet adapter connect
     connectPhantom()
       .then(closeModal)
       // eslint-disable-next-line no-console
