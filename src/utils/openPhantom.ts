@@ -1,69 +1,92 @@
 /**
- * Phantom Deep-Link Launcher
+ * Phantom Deep-Link Launcher using Universal Links
  * 
- * Opens the current page inside Phantom's in-app browser using the phantom:// scheme
- * Includes intent tracking and fallback handling
+ * Opens the current page inside Phantom's in-app browser using Phantom Universal Links
+ * Format: https://phantom.app/ul/browse?url=<encoded_url>
+ * 
+ * This implementation includes:
+ * - Intent tracking via localStorage
+ * - Fallback timer for app-not-installed scenarios
+ * - Automatic cleanup on successful app launch
  */
 
+// Intent flag key for tracking connection attempts
 const INTENT_KEY = 'vaultfi_phantom_connect_pending';
+
+// Time to wait before assuming Phantom didn't open (2.5 seconds)
 const FALLBACK_DELAY_MS = 2500;
+
+// Fallback URL if Phantom is not installed
 const PHANTOM_INSTALL_URL = 'https://phantom.app/download';
 
 /**
- * Open the current page in Phantom's in-app browser
+ * Open the current page in Phantom's in-app browser using Universal Links
  * 
- * This function:
- * 1. Sets an intent flag in localStorage
- * 2. Navigates to phantom://browse?url=<current_url>
- * 3. Sets a fallback timer to Phantom install page if app doesn't open
+ * Universal Link Format: https://phantom.app/ul/browse?url=<encoded_url>
  * 
- * @param url - Optional URL to open. Defaults to current window location
+ * Flow:
+ * 1. Sets intent flag in localStorage (vaultfi_phantom_connect_pending = "1")
+ * 2. Navigates to Phantom Universal Link
+ * 3. If Phantom opens → page loads in in-app browser with window.solana available
+ * 4. If Phantom doesn't open within 2.5s → redirects to install page
+ * 
+ * @param url - Optional URL to open in Phantom. Defaults to current window.location.href
  */
 export function openPhantom(url?: string): void {
     if (typeof window === 'undefined') return;
 
     // Use provided URL or current page URL
+    // This ensures the user returns to the exact same page after Phantom opens
     const targetUrl = url || window.location.href;
 
-    // Store intent flag BEFORE navigating
-    // This will be checked when the page loads inside Phantom
+    // STEP 1: Store intent flag BEFORE navigating
+    // This flag will be checked when the page loads inside Phantom's in-app browser
+    // to automatically trigger wallet connection
     try {
         localStorage.setItem(INTENT_KEY, '1');
+        console.log('[Phantom Deep-Link] Intent flag set');
     } catch (e) {
-        console.error('Failed to set Phantom intent flag:', e);
+        console.error('[Phantom Deep-Link] Failed to set intent flag:', e);
     }
 
-    // Encode the URL exactly once
+    // STEP 2: Encode the URL exactly once
+    // IMPORTANT: Single encoding only - double encoding will break the deep-link
     const encodedUrl = encodeURIComponent(targetUrl);
 
-    // Use phantom:// custom scheme for in-app browser
-    // This is the CORRECT format for opening Phantom's in-app browser
-    const phantomDeepLink = `phantom://browse?url=${encodedUrl}`;
+    // STEP 3: Build Phantom Universal Link
+    // Format: https://phantom.app/ul/browse?url=<encoded_url>
+    // This is the OFFICIAL format for Phantom Universal Links that works on iOS & Android
+    const phantomUniversalLink = `https://phantom.app/ul/browse?url=${encodedUrl}`;
 
-    console.log('[Phantom Deep-Link]', {
+    console.log('[Phantom Deep-Link] Opening Phantom', {
         targetUrl,
-        deepLink: phantomDeepLink,
+        universalLink: phantomUniversalLink,
         intentSet: true
     });
 
-    // Set fallback timer in case Phantom doesn't open
-    // This handles the case where Phantom is not installed
+    // STEP 4: Set fallback timer
+    // If Phantom doesn't open within 2.5s, assume it's not installed
+    // and redirect to install page
     const fallbackTimer = setTimeout(() => {
+        console.log('[Phantom Deep-Link] Fallback timer triggered - redirecting to install page');
+
         // Clear intent flag since redirect failed
         try {
             localStorage.removeItem(INTENT_KEY);
         } catch (e) {
-            // Ignore
+            // Ignore errors when clearing
         }
 
         // Redirect to Phantom install page
         window.location.href = PHANTOM_INSTALL_URL;
     }, FALLBACK_DELAY_MS);
 
-    // Listen for visibility change to clear fallback timer
-    // If Phantom opens, the page will be hidden and timer should be cleared
+    // STEP 5: Listen for visibility change
+    // If Phantom opens successfully, the page will be hidden (user switched to Phantom app)
+    // This allows us to cancel the fallback timer
     const handleVisibilityChange = () => {
         if (document.hidden) {
+            console.log('[Phantom Deep-Link] Page hidden - Phantom likely opened');
             clearTimeout(fallbackTimer);
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         }
@@ -71,34 +94,49 @@ export function openPhantom(url?: string): void {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // Trigger deep link immediately (must be in user gesture context)
-    window.location.href = phantomDeepLink;
+    // STEP 6: Trigger Universal Link navigation
+    // CRITICAL: This must be called synchronously within a user gesture (button click)
+    // Async operations before this line will break the deep-link on iOS
+    window.location.href = phantomUniversalLink;
 }
 
 /**
  * Check if there's a pending Phantom connect intent
- * Returns true if the intent flag is set
+ * 
+ * Returns true if the intent flag is set to "1"
+ * This indicates the user initiated a connection and we're waiting for them to return from Phantom
+ * 
+ * @returns boolean - true if intent flag is set, false otherwise
  */
 export function hasPendingPhantomIntent(): boolean {
     if (typeof window === 'undefined') return false;
 
     try {
-        return localStorage.getItem(INTENT_KEY) === '1';
+        const intent = localStorage.getItem(INTENT_KEY);
+        return intent === '1';
     } catch (e) {
+        console.error('[Phantom Deep-Link] Failed to check intent flag:', e);
         return false;
     }
 }
 
 /**
  * Clear the pending Phantom connect intent
- * Should be called after successfully connecting
+ * 
+ * Should be called after:
+ * - Successfully connecting the wallet
+ * - Connection error occurs
+ * - User cancels the connection
+ * 
+ * This prevents auto-connect from triggering on subsequent page loads
  */
 export function clearPhantomIntent(): void {
     if (typeof window === 'undefined') return;
 
     try {
         localStorage.removeItem(INTENT_KEY);
+        console.log('[Phantom Deep-Link] Intent flag cleared');
     } catch (e) {
-        console.error('Failed to clear Phantom intent flag:', e);
+        console.error('[Phantom Deep-Link] Failed to clear intent flag:', e);
     }
 }
