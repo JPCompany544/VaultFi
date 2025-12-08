@@ -9,6 +9,8 @@ import { SOL_TREASURY_ADDRESS } from "@/constants";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Wallet, DollarSign, Loader2, CheckCircle, AlertCircle, ExternalLink } from "lucide-react";
+import { shouldRedirectToPhantom, openInPhantomBrowser } from "@/utils/mobile";
+
 
 /**
  * VaultDepositPage
@@ -82,7 +84,15 @@ export default function VaultDepositPage() {
         setError(null);
         setTxSignature(null);
 
-        // A. Validation: Wallet must be connected
+        // A. Mobile Check: Redirect to Phantom browser if on mobile
+        if (shouldRedirectToPhantom()) {
+            // Redirect mobile users to Phantom's in-app browser
+            // where wallet connection will work seamlessly
+            openInPhantomBrowser();
+            return;
+        }
+
+        // B. Validation: Wallet must be connected
         if (!wallet?.address) {
             try {
                 await connectPhantom();
@@ -341,7 +351,14 @@ export default function VaultDepositPage() {
                 {/* --- Action Button --- */}
                 {!wallet?.address ? (
                     <button
-                        onClick={connectPhantom}
+                        onClick={() => {
+                            // Check if mobile user should be redirected to Phantom browser
+                            if (shouldRedirectToPhantom()) {
+                                openInPhantomBrowser();
+                            } else {
+                                connectPhantom();
+                            }
+                        }}
                         disabled={loading}
                         className="w-full max-w-sm rounded-xl py-4 font-semibold text-white bg-blue-600 hover:bg-blue-500 transition-all duration-300 flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20"
                     >

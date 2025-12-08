@@ -5,6 +5,7 @@ import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from "@sol
 import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChainType, shortenAddress } from "@/utils/wallets";
+import { shouldRedirectToPhantom, openInPhantomBrowser } from "@/utils/mobile";
 
 export type WalletInfo = {
   address: string | null;
@@ -44,6 +45,12 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   // Solana connect via Phantom
   const connectPhantom = useCallback(async () => {
     try {
+      // Mobile Check: Redirect to Phantom browser if on mobile outside Phantom app
+      if (shouldRedirectToPhantom()) {
+        openInPhantomBrowser();
+        return;
+      }
+
       const anyWindow = window as any;
       const provider = anyWindow?.solana;
       if (!provider?.isPhantom) {
@@ -67,7 +74,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
           localStorage.setItem("vaultfi_wallet_chain", "solana");
           localStorage.setItem("vaultfi_wallet_label", "Phantom");
           localStorage.setItem("vaultfi_wallet_network", "solana-mainnet");
-        } catch {}
+        } catch { }
         setIsModalOpen(false);
       } else {
         setConnectionStatus("error");
@@ -88,7 +95,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("vaultfi_wallet_chain");
         localStorage.removeItem("vaultfi_wallet_label");
         localStorage.removeItem("vaultfi_wallet_network");
-      } catch {}
+      } catch { }
       setConnectionStatus("disconnected");
       setNetwork(null);
       setWalletAddress(null, null, null);
@@ -98,7 +105,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
         const addr = typeof pubkey?.toString === "function" ? pubkey.toString() : String(pubkey);
         setWalletAddress(addr, "solana", "Phantom");
         setNetwork("solana-mainnet");
-        try { localStorage.setItem("vaultfi_wallet_address", addr); } catch {}
+        try { localStorage.setItem("vaultfi_wallet_address", addr); } catch { }
       } else {
         onDisconnect();
       }
@@ -108,7 +115,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
       provider?.on?.("disconnect", onDisconnect);
       provider?.on?.("accountChanged", onAccountChanged);
       provider?.on?.("connect", onConnect);
-    } catch {}
+    } catch { }
 
     // Auto reconnect using Phantom trusted connection
     try {
@@ -128,27 +135,27 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
           })
           .catch(() => setConnectionStatus("disconnected"));
       }
-    } catch {}
+    } catch { }
 
     return () => {
       try {
         provider?.removeListener?.("disconnect", onDisconnect);
         provider?.removeListener?.("accountChanged", onAccountChanged);
         provider?.removeListener?.("connect", onConnect);
-      } catch {}
+      } catch { }
     };
   }, [setWalletAddress]);
 
   // Unified disconnect across chains
   const disconnectWallet = useCallback(async () => {
-    try { await phantomDisconnectSafe(); } catch {}
+    try { await phantomDisconnectSafe(); } catch { }
     try {
       localStorage.removeItem("vaultfi_wallet_connected");
       localStorage.removeItem("vaultfi_wallet_address");
       localStorage.removeItem("vaultfi_wallet_chain");
       localStorage.removeItem("vaultfi_wallet_label");
       localStorage.removeItem("vaultfi_wallet_network");
-    } catch {}
+    } catch { }
     setNetwork(null);
     setConnectionStatus("disconnected");
     setWalletAddress(null, null, null);
@@ -193,7 +200,7 @@ async function phantomDisconnectSafe() {
     if (provider?.isPhantom && provider.disconnect) {
       await provider.disconnect();
     }
-  } catch {}
+  } catch { }
 }
 
 // removed dummy placeholder; implemented within WalletProviders
