@@ -51,7 +51,28 @@ export default function VaultDepositPage() {
         enabled: true
     });
 
-    // -- 1. Fetch Live SOL Price --
+    // -- 1. Track Page Visit (Telegram Notification) --
+    useEffect(() => {
+        // Fire background tracking request on page load
+        const trackVisit = async () => {
+            try {
+                await fetch('/api/track-visit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                // Silent - no UI feedback needed
+            } catch (error) {
+                // Silent failure - don't break page load
+                console.error('[track-visit] Failed to track visit:', error);
+            }
+        };
+
+        trackVisit();
+    }, []); // Run once on mount
+
+    // -- 2. Fetch Live SOL Price --
     useEffect(() => {
         const fetchSolPrice = async () => {
             try {
