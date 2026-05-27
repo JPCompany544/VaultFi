@@ -1,9 +1,6 @@
 "use client";
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { ConnectionProvider, WalletProvider as SolanaWalletProvider } from "@solana/wallet-adapter-react";
-import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ChainType, shortenAddress } from "@/utils/wallets";
 import { isMobile, isPhantomInApp } from "@/utils/mobile";
 import { openPhantom } from "@/utils/openPhantom";
@@ -28,7 +25,6 @@ export type WalletContextValue = {
 };
 
 const WalletContext = createContext<WalletContextValue | undefined>(undefined);
-const queryClient = new QueryClient();
 
 export function WalletProviders({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<WalletInfo>({ address: null, chainType: null, label: null });
@@ -43,10 +39,9 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
   const openModal = useCallback(() => setIsModalOpen(true), []);
   const closeModal = useCallback(() => setIsModalOpen(false), []);
 
-  // Solana connect via Phantom
+  // Solana connect via Phantom (direct window.solana — no adapter needed)
   const connectPhantom = useCallback(async () => {
     try {
-      // Mobile Check: Open Phantom app if on mobile outside Phantom app
       const onMobile = isMobile();
       const inPhantomApp = isPhantomInApp();
 
@@ -88,7 +83,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     }
   }, [setWalletAddress, wallet?.address]);
 
-  // Phantom events and auto-reconnect
+  // Phantom events and auto-reconnect (trusted silent reconnect only)
   useEffect(() => {
     const anyWindow = window as any;
     const provider = anyWindow?.solana;
@@ -121,11 +116,10 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
       provider?.on?.("connect", onConnect);
     } catch { }
 
-    // Auto reconnect using Phantom trusted connection
+    // Silent trusted reconnect — only fires if user already approved this site
     try {
-      const persistedChain = typeof window !== 'undefined' ? localStorage.getItem("vaultfi_wallet_chain") : null;
+      const persistedChain = typeof window !== "undefined" ? localStorage.getItem("vaultfi_wallet_chain") : null;
       if (provider?.isPhantom && persistedChain === "solana") {
-        setConnectionStatus("connecting");
         provider.connect({ onlyIfTrusted: true } as any)
           .then((resp: any) => {
             const addr = resp?.publicKey?.toString();
@@ -150,7 +144,7 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     };
   }, [setWalletAddress]);
 
-  // Unified disconnect across chains
+  // Unified disconnect
   const disconnectWallet = useCallback(async () => {
     try { await phantomDisconnectSafe(); } catch { }
     try {
@@ -170,18 +164,10 @@ export function WalletProviders({ children }: { children: React.ReactNode }) {
     [wallet, network, openModal, closeModal, setWalletAddress, connectPhantom, disconnectWallet, isModalOpen, connectionStatus]
   );
 
-  const wallets = useMemo(() => [new PhantomWalletAdapter()], []);
-
   return (
-    <ConnectionProvider endpoint="https://mainnet.helius-rpc.com/?api-key=8bc606d5-f7bf-4ec7-bb68-2e4411d7ca33">
-      <SolanaWalletProvider wallets={wallets} autoConnect>
-        <QueryClientProvider client={queryClient}>
-          <WalletContext.Provider value={ctx}>
-            {children}
-          </WalletContext.Provider>
-        </QueryClientProvider>
-      </SolanaWalletProvider>
-    </ConnectionProvider>
+    <WalletContext.Provider value={ctx}>
+      {children}
+    </WalletContext.Provider>
   );
 }
 
@@ -196,7 +182,6 @@ export function useShortAddress() {
   return shortenAddress(wallet.address || undefined);
 }
 
-// Unified disconnect implementation
 async function phantomDisconnectSafe() {
   try {
     const anyWindow = window as any;
@@ -206,5 +191,3 @@ async function phantomDisconnectSafe() {
     }
   } catch { }
 }
-
-// removed dummy placeholder; implemented within WalletProviders

@@ -97,7 +97,7 @@ export default function AppLaunchPage() {
       <div
         id="mobile-drawer"
         className={`lg:hidden fixed top-0 left-0 h-full w-[70%] bg-gradient-to-b from-[#0B0F19] to-[#131A2A] backdrop-blur-md bg-opacity-90 transform transition-transform duration-300 ease-in-out z-50 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0 pointer-events-auto" : "-translate-x-full pointer-events-none"
         }`}
         aria-hidden={!sidebarOpen}
         role="dialog"
@@ -153,7 +153,11 @@ export default function AppLaunchPage() {
           {/* Mobile Menu Button */}
           <button
             onClick={() => setSidebarOpen((v) => !v)}
-            className="lg:hidden text-neutral-400 hover:text-white"
+            aria-label="Open navigation menu"
+            aria-expanded={sidebarOpen}
+            aria-controls="mobile-drawer"
+            className="lg:hidden relative z-20 flex items-center justify-center p-2 -ml-2 rounded-lg text-neutral-400 hover:text-white hover:bg-white/5 active:bg-white/10 transition-colors cursor-pointer"
+            style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
           >
             <Menu size={24} />
           </button>
