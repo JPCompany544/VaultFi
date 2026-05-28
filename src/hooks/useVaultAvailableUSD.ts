@@ -35,9 +35,9 @@ export function useVaultAvailableUSD(walletAddress: string | null, vaultName: st
 
         // Compute using integer cents to prevent floating point trust
         const totalCents = position ? Math.round(position.totalValueUsd * 100) : 0;
-        const pendingCents = pendingWithdrawals.reduce((sum, w) => sum + Math.round(w.amountUsd * 100), 0);
         
-        const availableCents = Math.max(0, totalCents - pendingCents);
+        // The user explicitly requested: "the balance of the user should never deduct until I have clicked on the confirm settlement"
+        const availableCents = totalCents; 
         const availableDollars = availableCents / 100;
 
         if (!cancelled) {

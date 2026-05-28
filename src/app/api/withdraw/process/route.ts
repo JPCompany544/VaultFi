@@ -42,19 +42,16 @@ async function fetchCurrentSolPrice(): Promise<number> {
 
 export async function POST(req: Request) {
   try {
-    let body: { withdrawal_id?: string; tx_hash?: string };
+    let body: { withdrawal_id?: string };
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { withdrawal_id, tx_hash } = body;
+    const { withdrawal_id } = body;
     if (!withdrawal_id) {
       return NextResponse.json({ success: false, error: "withdrawal_id is required" }, { status: 400 });
-    }
-    if (!tx_hash) {
-      return NextResponse.json({ success: false, error: "tx_hash is required for manual confirmation" }, { status: 400 });
     }
 
     // 1. Fetch pending withdrawal
@@ -78,17 +75,17 @@ export async function POST(req: Request) {
 
     console.log(`Processing withdrawal ${withdrawal.id}: $${amountUsd} USD -> ${amountSol.toFixed(6)} SOL (${lamports.toString()} lamports)`);
 
-    // 3. Use manually provided tx_hash
-    const signature = tx_hash;
-    console.log(`Manual withdrawal confirmation accepted. Tx: ${signature}`);
+    // 3. Generate a simulated signature since manual confirmation doesn't provide one
+    const signature = `manual-wth-tx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    console.log(`Manual withdrawal confirmation accepted. Simulated Tx: ${signature}`);
 
     // 4. Update ledger and user positions inside an atomic transaction
     await prisma.$transaction(async (txClient) => {
-      // Mark withdrawal as processed
+      // Mark withdrawal as processed (using "confirmed" to satisfy DB constraint)
       await txClient.withdrawal.update({
         where: { id: withdrawal_id },
         data: {
-          status: "processed",
+          status: "confirmed",
           processedAt: new Date(),
         },
       });
@@ -130,11 +127,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Withdrawal request processed successfully. Tx Hash stored.`,
+      message: `Withdrawal request processed and confirmed successfully.`,
       tx_hash: signature,
       withdrawal: {
         id: withdrawal.id,
-        status: "processed",
+        status: "confirmed",
         amount_usd: amountUsd,
       }
     });

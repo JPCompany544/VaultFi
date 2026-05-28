@@ -108,12 +108,6 @@ export default function AdminPage() {
   const processWithdrawalTransaction = async (withdrawalId: string) => {
     if (!withdrawalId) return;
 
-    const txHash = window.prompt("Enter the Transaction Hash (TxHash) for this withdrawal to confirm it:");
-    if (!txHash) {
-      alert("Transaction Hash is required to process the withdrawal.");
-      return;
-    }
-
     setProcessingWithdrawalId(withdrawalId);
     
     try {
@@ -122,7 +116,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ withdrawal_id: withdrawalId, tx_hash: txHash.trim() }),
+        body: JSON.stringify({ withdrawal_id: withdrawalId }),
       });
 
       const data = await response.json();
@@ -330,8 +324,8 @@ export default function AdminPage() {
                   {pendingWithdrawals.map((withdrawal) => (
                     <tr key={withdrawal.id} className="border-b border-neutral-800 text-sm">
                       <td className="py-4">
-                        <div className="text-white font-mono font-medium">
-                          {shortenAddress(withdrawal.destinationWallet)}
+                        <div className="text-white font-mono font-medium text-[11px] break-all max-w-[200px]">
+                          {withdrawal.destinationWallet}
                         </div>
                       </td>
                       <td className="py-4 font-mono text-neutral-300">
