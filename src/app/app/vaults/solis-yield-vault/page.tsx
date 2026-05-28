@@ -219,8 +219,8 @@ export default function SolisOperationalTerminal() {
         }
       } catch (err) {
         console.error("Transaction confirmation error (timeout/dropped)", err);
-        toast.loading("Confirmation delayed. Verifying on backend...", { id: "delayed-verification" });
-        // DO NOT return here! The transaction might still be on the blockchain. Let the backend verify it.
+        toast.loading("Confirmation delayed. Verifying on network...", { id: "delayed-verification" });
+        // DO NOT return here! The transaction might still be on the blockchain. Let the network verify it.
       }
 
       setDepositStep("calling-api");
@@ -247,12 +247,12 @@ export default function SolisOperationalTerminal() {
         await refreshDeposits();
         setDepositStep("idle");
         setAmount("");
-        toast.success("Transaction verified. Capital allocation confirmed. Position activated.");
+        toast.success("Transaction verified. Capital allocation confirmed. Position activated.", { id: "delayed-verification" });
       } catch (err: any) {
         console.error("Verification error", err);
-        setErrorMessage(err.message || "Failed to verify transaction on the backend.");
+        setErrorMessage(err.message || "Failed to verify transaction on the network.");
         setDepositStep("error");
-        toast.error(err.message || "Position activation failed.");
+        toast.error(err.message || "Position activation failed.", { id: "delayed-verification" });
       }
     } catch (err) {
       console.error("Unexpected allocation error", err);

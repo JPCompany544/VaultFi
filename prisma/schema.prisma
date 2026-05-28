@@ -1,79 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
-model User {
-  id            String          @id @default(uuid())
-  walletAddress String          @unique @map("wallet_address")
-  createdAt     DateTime        @default(now()) @map("created_at")
-  deposits      Deposit[]
-  withdrawals   Withdrawal[]
-  positions     VaultPosition[]
-
-  @@map("users")
-}
-
 model Deposit {
-  id              String    @id @default(uuid())
-  walletAddress   String    @map("wallet_address")
-  vaultName       String    @map("vault_name")
-  amountSol       BigInt    @map("amount_sol")      // Integer lamports
-  amountUsd       Int       @map("amount_usd")      // Integer cents
-  txHash          String    @unique @map("tx_hash")
-  treasuryAddress String    @map("treasury_address")
-  status          String    @default("pending")     // "pending" | "confirmed" | "failed"
-  confirmedAt     DateTime? @map("confirmed_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  user            User      @relation(fields: [walletAddress], references: [walletAddress])
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet            String
+  vaultName         String    @map("vault_name")
+  amountSol         Decimal   @map("amount_sol") @db.Decimal
+  amountUsd         Decimal   @map("amount_usd") @db.Decimal
+  sol_price         Decimal   @db.Decimal
+  txHash            String    @unique @map("tx_hash")
+  status            String
+  apy               Decimal?  @default(0) @db.Decimal
+  claimable_rewards Decimal?  @default(0) @db.Decimal
+  confirmedAt       DateTime? @map("confirmed_at") @db.Timestamp(6)
+  createdAt         DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
 
   @@map("deposits")
 }
 
 model Withdrawal {
-  id                String    @id @default(uuid())
-  walletAddress     String    @map("wallet_address")
-  vaultName       String    @map("vault_name")
-  amountUsd         Int       @map("amount_usd")      // Integer cents
-  destinationWallet String    @map("destination_wallet")
-  status            String    @default("pending")     // "pending" | "processed" | "failed"
-  createdAt         DateTime  @default(now()) @map("created_at")
-  processedAt       DateTime? @map("processed_at")
-
-  user              User      @relation(fields: [walletAddress], references: [walletAddress])
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wallet     String
+  vaultName  String    @map("vault_name")
+  amountUsd  Decimal   @map("amount_usd") @db.Decimal
+  status     String
+  createdAt  DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
 
   @@map("withdrawals")
 }
 
-model VaultPosition {
-  id            String   @id @default(uuid())
-  walletAddress String   @map("wallet_address")
-  vaultName     String   @map("vault_name")
-  principalUsd  Int      @map("principal_usd")   // Integer cents
-  rewardsUsd    Int      @map("rewards_usd")     // Integer cents
-  totalValueUsd Int      @map("total_value_usd") // Integer cents
-  updatedAt     DateTime @updatedAt @map("updated_at")
-
-  user          User     @relation(fields: [walletAddress], references: [walletAddress])
-
-  @@unique([walletAddress, vaultName])
-  @@map("vault_positions")
-}
-
-model TreasuryLedger {
-  id            String   @id @default(uuid())
-  txHash        String?  @unique @map("tx_hash")
-  direction     String   // "IN" | "OUT"
-  amount        BigInt   // Lamports for SOL, cents for USD
-  asset         String   // "SOL" | "USD"
-  verified      Boolean  @default(false)
-  createdAt     DateTime @default(now()) @map("created_at")
-
-  @@map("treasury_ledger")
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model treasury_events {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_type String
+  wallet     String?
+  tx_hash    String?
+  amount     Decimal?  @db.Decimal
+  metadata   Json?
+  created_at DateTime? @default(now()) @db.Timestamp(6)
 }

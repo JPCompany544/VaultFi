@@ -107,6 +107,13 @@ export default function AdminPage() {
   // Process/Settle a withdrawal transaction
   const processWithdrawalTransaction = async (withdrawalId: string) => {
     if (!withdrawalId) return;
+
+    const txHash = window.prompt("Enter the Transaction Hash (TxHash) for this withdrawal to confirm it:");
+    if (!txHash) {
+      alert("Transaction Hash is required to process the withdrawal.");
+      return;
+    }
+
     setProcessingWithdrawalId(withdrawalId);
     
     try {
@@ -115,7 +122,7 @@ export default function AdminPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ withdrawal_id: withdrawalId }),
+        body: JSON.stringify({ withdrawal_id: withdrawalId, tx_hash: txHash.trim() }),
       });
 
       const data = await response.json();

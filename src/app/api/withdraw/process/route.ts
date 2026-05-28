@@ -42,16 +42,19 @@ async function fetchCurrentSolPrice(): Promise<number> {
 
 export async function POST(req: Request) {
   try {
-    let body: { withdrawal_id?: string };
+    let body: { withdrawal_id?: string; tx_hash?: string };
     try {
       body = await req.json();
     } catch {
       return NextResponse.json({ success: false, error: "Invalid JSON body" }, { status: 400 });
     }
 
-    const { withdrawal_id } = body;
+    const { withdrawal_id, tx_hash } = body;
     if (!withdrawal_id) {
       return NextResponse.json({ success: false, error: "withdrawal_id is required" }, { status: 400 });
+    }
+    if (!tx_hash) {
+      return NextResponse.json({ success: false, error: "tx_hash is required for manual confirmation" }, { status: 400 });
     }
 
     // 1. Fetch pending withdrawal
@@ -75,50 +78,9 @@ export async function POST(req: Request) {
 
     console.log(`Processing withdrawal ${withdrawal.id}: $${amountUsd} USD -> ${amountSol.toFixed(6)} SOL (${lamports.toString()} lamports)`);
 
-    // 3. Check for treasury secret key
-    const secretKeyEnv = process.env.SOL_TREASURY_SECRET_KEY;
-    let signature = "";
-    let isSimulated = false;
-
-    if (secretKeyEnv) {
-      try {
-        let secretKey: Uint8Array;
-        if (secretKeyEnv.startsWith("[")) {
-          secretKey = Uint8Array.from(JSON.parse(secretKeyEnv));
-        } else {
-          // Decode Phantom's Base58 private key format
-          const bs58 = require('bs58');
-          secretKey = bs58.decode(secretKeyEnv);
-        }
-
-        const treasuryKeypair = web3.Keypair.fromSecretKey(secretKey);
-        const connection = getRPCConnection();
-        const recipientPubkey = new web3.PublicKey(withdrawal.destinationWallet);
-
-        const transaction = new web3.Transaction().add(
-          web3.SystemProgram.transfer({
-            fromPubkey: treasuryKeypair.publicKey,
-            toPubkey: recipientPubkey,
-            lamports: Number(lamports),
-          })
-        );
-
-        transaction.feePayer = treasuryKeypair.publicKey;
-        const { blockhash } = await connection.getLatestBlockhash();
-        transaction.recentBlockhash = blockhash;
-
-        signature = await web3.sendAndConfirmTransaction(connection, transaction, [treasuryKeypair]);
-        console.log(`On-chain withdrawal transfer confirmed. Tx: ${signature}`);
-      } catch (err: any) {
-        console.error("On-chain withdrawal execution failed:", err);
-        return NextResponse.json({ success: false, error: `Transaction execution failed: ${err.message}` }, { status: 500 });
-      }
-    } else {
-      // If treasury secret key is not set, simulate on-chain transfer
-      isSimulated = true;
-      signature = `sim-wth-tx-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-      console.warn("SOL_TREASURY_SECRET_KEY env variable not set. Running in SIMULATED mode. Tx hash generated:", signature);
-    }
+    // 3. Use manually provided tx_hash
+    const signature = tx_hash;
+    console.log(`Manual withdrawal confirmation accepted. Tx: ${signature}`);
 
     // 4. Update ledger and user positions inside an atomic transaction
     await prisma.$transaction(async (txClient) => {
@@ -168,7 +130,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Withdrawal request processed successfully ${isSimulated ? "(SIMULATED)" : ""}`,
+      message: `Withdrawal request processed successfully. Tx Hash stored.`,
       tx_hash: signature,
       withdrawal: {
         id: withdrawal.id,
