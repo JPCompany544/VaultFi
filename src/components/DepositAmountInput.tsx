@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { ArrowRight } from "lucide-react";
-
-// Static reference price — no external API calls, instant render
-const STATIC_SOL_PRICE = 165;
 
 type Props = {
   value: string;
@@ -12,6 +9,7 @@ type Props = {
   onPriceChangeAction?: (price: number | null) => void;
   label?: string;
   hideOracle?: boolean;
+  solPrice?: number | null;
 };
 
 export default function DepositAmountInput({ 
@@ -19,16 +17,43 @@ export default function DepositAmountInput({
   onChange, 
   onPriceChangeAction,
   label = "Allocation Amount",
-  hideOracle = false
+  hideOracle = false,
+  solPrice
 }: Props) {
-  // Immediately notify parent of the static reference price — no network call needed
-  useEffect(() => {
-    onPriceChangeAction?.(STATIC_SOL_PRICE);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const [internalPrice, setInternalPrice] = useState<number | null>(null);
 
+  // Poll price internally only if not provided by parent
+  useEffect(() => {
+    if (solPrice !== undefined && solPrice !== null) {
+      onPriceChangeAction?.(solPrice);
+      return;
+    }
+
+    let active = true;
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch("/api/solPrice");
+        const data = await res.json();
+        if (active && data.success && data.price > 0) {
+          setInternalPrice(data.price);
+          onPriceChangeAction?.(data.price);
+        }
+      } catch (e) {
+        console.error("Internal input price fetch failed:", e);
+      }
+    };
+
+    void fetchPrice();
+    const interval = setInterval(fetchPrice, 15000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [solPrice, onPriceChangeAction]);
+
+  const activePrice = solPrice !== undefined && solPrice !== null ? solPrice : (internalPrice || 165);
   const amountNum = Number.parseFloat(value || "0") || 0;
-  const usdValue = STATIC_SOL_PRICE * amountNum;
+  const usdValue = activePrice * amountNum;
 
   return (
     <div className="text-[#F5F5F5]">
@@ -62,10 +87,11 @@ export default function DepositAmountInput({
             ≈ {usdValue ? `$${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "$0.00"} USD
           </div>
           <div>
-            Index Price: ${STATIC_SOL_PRICE.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            Index Price: {activePrice ? `$${activePrice.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "Fetching..."}
           </div>
         </div>
       )}
     </div>
   );
 }
+

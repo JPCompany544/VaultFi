@@ -7,28 +7,52 @@ import { useDepositContext } from "@/context/DepositContext";
 import { useWithdrawal } from "@/hooks/useWithdrawal";
 import { useVaultAvailableUSD } from "@/hooks/useVaultAvailableUSD";
 import * as web3 from "@solana/web3.js";
-
-// Direct RPC connection — instantiated on demand, no provider required
-const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=8bc606d5-f7bf-4ec7-bb68-2e4411d7ca33";
-function getConnection() { return new web3.Connection(HELIUS_RPC, "confirmed"); }
 import { supabase } from "@/lib/supabase";
 import { getVaultBySlug } from "@/config/vaults";
 import DepositAmountInput from "@/components/DepositAmountInput";
 import TreasuryActivityStream from "@/components/TreasuryActivityStream";
 import toast from "react-hot-toast";
 
-const SOL_TREASURY_ADDRESS = "GojuogncNsE3SXX3BsZSuRXzYkVgapfnbFGjhqt1U8ic";
+// Public Solana RPC connection for fetching blockhashes and sending transactions
+// Using publicnode because api.mainnet-beta.solana.com blocks frontend CORS requests with 403
+const PUBLIC_SOLANA_RPC = "https://solana-rpc.publicnode.com";
+function getConnection() { return new web3.Connection(PUBLIC_SOLANA_RPC, "confirmed"); }
+
+const SOL_TREASURY_ADDRESS = process.env.NEXT_PUBLIC_SOL_TREASURY_ADDRESS || "3dUdf8boyak3DUcU992UvNtM8n5RTzpQqX35DUtmUCCR";
 
 export default function SolisOperationalTerminal() {
   // Inputs & Actions state
   const [amount, setAmount] = useState("");
   const [exitAmount, setExitAmount] = useState("");
-  const [solPriceUSD, setSolPriceUSD] = useState<number | null>(165); // static reference price
+  const [solPriceUSD, setSolPriceUSD] = useState<number | null>(null);
+
+  // Poll live index price
+  useEffect(() => {
+    let active = true;
+    const fetchPrice = async () => {
+      try {
+        const res = await fetch("/api/solPrice");
+        const data = await res.json();
+        if (active && data.success && data.price > 0) {
+          setSolPriceUSD(data.price);
+        }
+      } catch (e) {
+        console.error("Failed to fetch live index price:", e);
+      }
+    };
+    void fetchPrice();
+    const interval = setInterval(fetchPrice, 15000); // Poll every 15s
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   // Allocation terminal step
   const [isDepositing, setIsDepositing] = useState(false);
   const [depositStep, setDepositStep] = useState<'idle' | 'signing' | 'confirming' | 'calling-api' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isConfirming, setIsConfirming] = useState(false);
   const [showInlineSuccess, setShowInlineSuccess] = useState(false);
 
   // Liquidity exit panel step
@@ -194,73 +218,42 @@ export default function SolisOperationalTerminal() {
           throw new Error("Transaction confirmation failed");
         }
       } catch (err) {
-        console.error("Transaction confirmation error", err);
-        setDepositStep("error");
-        toast.error("Transaction verification failed.");
-        return;
+        console.error("Transaction confirmation error (timeout/dropped)", err);
+        toast.loading("Confirmation delayed. Verifying on backend...", { id: "delayed-verification" });
+        // DO NOT return here! The transaction might still be on the blockchain. Let the backend verify it.
       }
 
       setDepositStep("calling-api");
 
-      let insertErrorObj: any = null;
-      let insertedRow: any = null;
-
       try {
-        const response = await Promise.race([
-          supabase
-            .from("deposits")
-            .insert({
-              wallet: provider.publicKey.toBase58(),
-              vault_name: vaultName,
-              amount: amountSOL,
-              amount_usd: usdAmount,
-              tx_hash: signature,
-              status: "confirmed",
-              created_at: new Date().toISOString(),
-              claimable_rewards: 0,
-              apy: vaultAPY || 0,
-            })
-            .select()
-            .single(),
-          new Promise<never>((_, r) => setTimeout(() => r(new Error("Timeout")), 1500))
-        ]);
-        if (response.error) throw response.error;
-        insertedRow = response.data;
-      } catch (err) {
-        console.warn("Supabase deposit insert failed/timed out. Saving locally.", err);
-        insertErrorObj = err;
-      }
+        const response = await fetch("/api/verifyDeposit", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tx_hash: signature,
+            wallet_address: provider.publicKey.toBase58(),
+            vault_slug: "solis-yield-vault",
+            amount_sol: amountSOL,
+          }),
+        });
 
-      if (insertErrorObj || !insertedRow) {
-        const localDeposit = {
-          id: `local-dep-${Date.now()}`,
-          wallet: provider.publicKey.toBase58(),
-          vaultName: vaultName,
-          amount: amountSOL,
-          usdAmount: usdAmount,
-          txHash: signature,
-          status: "confirmed" as const,
-          createdAt: new Date().toISOString(),
-          claimable_rewards: 0,
-          apy: vaultAPY || 0,
-        };
-
-        try {
-          const cacheKey = `vaultfi_deposits_${provider.publicKey.toBase58()}`;
-          const currentCached = localStorage.getItem(cacheKey);
-          const currentList = currentCached ? JSON.parse(currentCached) : [];
-          const nextList = [localDeposit, ...currentList];
-          localStorage.setItem(cacheKey, JSON.stringify(nextList));
-          
-          await refreshDeposits();
-        } catch (e) {
-          console.error("Local cache write failed for manual deposit", e);
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Verification failed");
         }
-      }
 
-      setDepositStep("idle");
-      setAmount("");
-      toast.success("Transaction verified. Capital allocation confirmed. Position activated.");
+        await refreshDeposits();
+        setDepositStep("idle");
+        setAmount("");
+        toast.success("Transaction verified. Capital allocation confirmed. Position activated.");
+      } catch (err: any) {
+        console.error("Verification error", err);
+        setErrorMessage(err.message || "Failed to verify transaction on the backend.");
+        setDepositStep("error");
+        toast.error(err.message || "Position activation failed.");
+      }
     } catch (err) {
       console.error("Unexpected allocation error", err);
       setDepositStep("error");
@@ -324,6 +317,30 @@ export default function SolisOperationalTerminal() {
     setExitAmount("");
     toast.success("Settlement processing initiated.");
     try { await refreshDeposits(); } catch {}
+  };
+
+  const handleConfirmSettlement = async () => {
+    // Find the pending withdrawal for this vault
+    const pendingWithdrawal = withdrawals.find(w => w.walletAddress === walletAddress && w.vaultName === vaultName && w.status === "pending");
+    if (!pendingWithdrawal) return;
+    
+    setIsConfirming(true);
+    try {
+      const response = await fetch("/api/withdraw/process", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ withdrawal_id: pendingWithdrawal.id })
+      });
+      const data = await response.json();
+      if (!data.success) throw new Error(data.error || "Failed to process withdrawal");
+      
+      toast.success("Withdrawal confirmed successfully!");
+      try { await refreshDeposits(); } catch {}
+    } catch (e: any) {
+      toast.error(e.message || "Failed to process withdrawal");
+    } finally {
+      setIsConfirming(false);
+    }
   };
 
   // Auto reset exit success alert
@@ -504,6 +521,7 @@ export default function SolisOperationalTerminal() {
                   onChange={setAmount} 
                   onPriceChangeAction={setSolPriceUSD} 
                   label="Allocation Amount"
+                  solPrice={solPriceUSD}
                 />
               </div>
 
@@ -584,7 +602,7 @@ export default function SolisOperationalTerminal() {
 
                 {/* Display Available Liquidity */}
                 <div className="mb-4 bg-[#151515] p-3 border border-white/5 rounded-sm">
-                  <div className="text-[9px] font-mono text-[#8A8A8A] uppercase tracking-wider">Available Liquidity</div>
+                  <div className="text-[9px] font-mono text-[#8A8A8A] uppercase tracking-wider">Available Liquidity (USD)</div>
                   <div className="text-sm font-semibold text-[#F5F5F5] font-mono mt-0.5">
                     ${availableUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs text-[#8A8A8A]">USD</span>
                   </div>
@@ -599,6 +617,7 @@ export default function SolisOperationalTerminal() {
                   onPriceChangeAction={setSolPriceUSD} 
                   label="Requested Exit Amount"
                   hideOracle={true}
+                  solPrice={solPriceUSD}
                 />
               </div>
 
@@ -638,6 +657,16 @@ export default function SolisOperationalTerminal() {
                           : "Settled"}
                       </span>
                     </div>
+
+                    {latestVaultDeposit?.status === "pending_withdrawal" && (
+                      <button
+                        onClick={handleConfirmSettlement}
+                        disabled={isConfirming}
+                        className="w-full mt-2 bg-[#7C5CFC] hover:bg-[#7C5CFC]/90 disabled:bg-[#7C5CFC]/50 text-white font-mono text-xs uppercase tracking-wider font-semibold py-2 rounded-sm transition-all duration-150"
+                      >
+                        {isConfirming ? "Processing..." : "Confirm Settlement (Admin)"}
+                      </button>
+                    )}
 
                     {exitStep === "success" && (
                       <div className="bg-emerald-950/20 border border-emerald-500/30 p-2 rounded-sm text-center">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useDepositContext } from "@/context/DepositContext";
+import { supabase } from "@/lib/supabase";
 import { Terminal } from "lucide-react";
 
 interface ActivityLog {
@@ -14,131 +14,61 @@ interface ActivityLog {
 }
 
 export default function TreasuryActivityStream() {
-  const { deposits } = useDepositContext();
-  const [systemLogs, setSystemLogs] = useState<ActivityLog[]>([]);
+  const [ledgerLogs, setLedgerLogs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // Generate some realistic background system logs on mount
-  useEffect(() => {
-    const baseTime = Date.now();
-    const mockLogs: ActivityLog[] = [
-      {
-        id: "sys-1",
-        timestamp: new Date(baseTime - 45 * 60 * 1000).toISOString(),
-        type: "system",
-        message: "Treasury synchronization complete. All ledger states verified.",
-        status: "success"
-      },
-      {
-        id: "sys-2",
-        timestamp: new Date(baseTime - 30 * 60 * 1000).toISOString(),
-        type: "network",
-        message: "Solana RPC status: Helius node synchronization active (Latency: 12ms).",
-        status: "info"
-      },
-      {
-        id: "sys-3",
-        timestamp: new Date(baseTime - 15 * 60 * 1000).toISOString(),
-        type: "system",
-        message: "Settlement window verification check complete. Exit routes open.",
-        status: "success"
-      },
-      {
-        id: "sys-4",
-        timestamp: new Date(baseTime - 5 * 60 * 1000).toISOString(),
-        type: "system",
-        message: "System health check complete. State: Sovereign Operational.",
-        status: "success"
+  const fetchLedgerLogs = async () => {
+    try {
+      const response = await fetch("/api/treasury");
+      if (response.ok) {
+        const json = await response.json();
+        if (json.success && json.data) {
+          setLedgerLogs(json.data);
+        }
       }
-    ];
-    setSystemLogs(mockLogs);
+    } catch (e) {
+      console.error("Failed to fetch treasury ledger logs:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Periodically add new system messages to keep terminal alive
+  useEffect(() => {
+    fetchLedgerLogs();
+
+    // Use polling since local Prisma doesn't have Supabase realtime channels
     const interval = setInterval(() => {
-      const messages = [
-        "Treasury synchronization complete.",
-        "Solana network oracle sync successful.",
-        "Active capital deployment channels synchronized.",
-        "Liquidity exit pathways verified.",
-        "Ledger synchronization check: OK."
-      ];
-      const randomMsg = messages[Math.floor(Math.random() * messages.length)];
-      setSystemLogs(prev => [
-        {
-          id: `sys-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          type: "system",
-          message: randomMsg,
-          status: "success"
-        },
-        ...prev.slice(0, 10) // Limit backlog size
-      ]);
-    }, 45000);
+      void fetchLedgerLogs();
+    }, 5000); // refresh every 5 seconds
 
     return () => clearInterval(interval);
   }, []);
 
-  // Format real user deposits/withdrawals from Supabase
-  const userLogs = useMemo<ActivityLog[]>(() => {
-    const logs: ActivityLog[] = [];
-    deposits.forEach((dep) => {
-      if (dep.vaultName !== "Solis Yield Vault") return;
-      const timeStr = dep.createdAt;
-      const shortenedHash = dep.txHash ? `${dep.txHash.slice(0, 6)}...${dep.txHash.slice(-6)}` : "";
+  // Format real database events into logs
+  const logs = useMemo<ActivityLog[]>(() => {
+    return ledgerLogs.map((row) => {
+      const isSol = row.asset === "SOL";
+      const amountVal = isSol ? Number(row.amount) / 1e9 : Number(row.amount) / 100;
+      const amountStr = isSol 
+        ? `${amountVal.toFixed(4)} SOL` 
+        : `$${amountVal.toFixed(2)} USD`;
       
-      if (dep.status === "confirmed") {
-        if (dep.amount > 0) {
-          logs.push({
-            id: `usr-dep-${dep.id}`,
-            timestamp: timeStr,
-            type: "user",
-            message: `Capital allocation confirmed. Verified ${dep.amount} SOL (${shortenedHash})`,
-            status: "success",
-            hash: dep.txHash || undefined
-          });
-          logs.push({
-            id: `usr-pos-${dep.id}`,
-            timestamp: timeStr,
-            type: "user",
-            message: `Position activated. Allocation size: ${dep.amount} SOL`,
-            status: "success"
-          });
-        } else {
-          // Completed exit (withdrawal is represented as negative deposit)
-          logs.push({
-            id: `usr-wth-${dep.id}`,
-            timestamp: timeStr,
-            type: "user",
-            message: `Liquidity exit completed. Settled: ${Math.abs(dep.amount)} USD`,
-            status: "success"
-          });
-        }
-      } else if (dep.status === "pending") {
-        logs.push({
-          id: `usr-dep-pend-${dep.id}`,
-          timestamp: timeStr,
-          type: "user",
-          message: `Settlement processing in progress. Allocation of ${dep.amount} SOL (${shortenedHash})`,
-          status: "pending",
-          hash: dep.txHash || undefined
-        });
-      } else if (dep.status === "pending_withdrawal") {
-        logs.push({
-          id: `usr-wth-pend-${dep.id}`,
-          timestamp: timeStr,
-          type: "user",
-          message: `Liquidity exit request initiated. Amount: ${dep.amount} USD`,
-          status: "pending"
-        });
-      }
+      const txHash = row.txHash || row.tx_hash;
+      const shortenedHash = txHash ? `${txHash.slice(0, 6)}...${txHash.slice(-6)}` : "";
+      
+      const type = row.direction === "IN" ? "user" : "system";
+      const typeLabel = row.direction === "IN" ? "Capital allocation verified" : "Liquidity exit settled";
+      
+      return {
+        id: row.id,
+        timestamp: row.createdAt || row.created_at,
+        type: type as any,
+        message: `${typeLabel}. ${row.direction}flow of ${amountStr} ${shortenedHash ? `(${shortenedHash})` : ""}`,
+        hash: txHash || undefined,
+        status: row.verified ? "success" : "pending",
+      };
     });
-    return logs;
-  }, [deposits]);
-
-  // Combine and sort all logs by timestamp descending
-  const allLogs = useMemo(() => {
-    const combined = [...systemLogs, ...userLogs];
-    return combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [systemLogs, userLogs]);
+  }, [ledgerLogs]);
 
   return (
     <div className="bg-[#101010] border border-white/5 p-4 rounded-sm font-mono text-[11px] leading-relaxed select-none">
@@ -159,10 +89,12 @@ export default function TreasuryActivityStream() {
 
       {/* Terminal logs list */}
       <div className="h-48 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-        {allLogs.length === 0 ? (
+        {loading ? (
+          <div className="text-[#8A8A8A] italic">Loading logs...</div>
+        ) : logs.length === 0 ? (
           <div className="text-[#8A8A8A] italic">Awaiting connection status...</div>
         ) : (
-          allLogs.map((log) => {
+          logs.map((log) => {
             const timeFormatted = new Date(log.timestamp).toLocaleTimeString("en-US", {
               hour12: false,
               hour: "2-digit",
@@ -206,3 +138,4 @@ export default function TreasuryActivityStream() {
     </div>
   );
 }
+

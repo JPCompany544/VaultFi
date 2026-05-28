@@ -14,9 +14,25 @@ export async function GET() {
 
     console.log(`Found ${pendingDeposits.length} pending deposits`);
 
+    // Format to prevent BigInt serialization issues in JSON
+    const formattedDeposits = pendingDeposits.map((d) => ({
+      id: d.id,
+      walletAddress: d.walletAddress,
+      vaultName: d.vaultName,
+      amountSol: d.amountSol.toString(), // serialize BigInt as string
+      amountUsd: d.amountUsd,
+      txHash: d.txHash,
+      status: d.status,
+      createdAt: d.createdAt,
+      user: {
+        id: d.user.id,
+        walletAddress: d.user.walletAddress,
+      },
+    }));
+
     return NextResponse.json({
       success: true,
-      deposits: pendingDeposits,
+      deposits: formattedDeposits,
     });
   } catch (error: any) {
     console.error("Error fetching pending deposits:", error);
@@ -27,3 +43,4 @@ export async function GET() {
     );
   }
 }
+

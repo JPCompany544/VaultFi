@@ -1,1 +1,1 @@
-export const SOL_TREASURY_ADDRESS = "GojuogncNsE3SXX3BsZSuRXzYkVgapfnbFGjhqt1U8ic";
+export const SOL_TREASURY_ADDRESS = "3dUdf8boyak3DUcU992UvNtM8n5RTzpQqX35DUtmUCCR";

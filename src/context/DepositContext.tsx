@@ -6,33 +6,45 @@ import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { useWalletContext } from "@/context/WalletContext";
 
-export type DepositStatus = "pending" | "confirmed" | "pending_withdrawal";
+export type DepositStatus = "pending" | "confirmed" | "failed";
 
 export type Deposit = {
   id: string;
   wallet: string;
   vaultName: string | null;
-  amount: number;
-  usdAmount?: number;
+  amount: number; // in SOL
+  usdAmount?: number; // in USD
   txHash: string | null;
   status: DepositStatus;
-  apy?: number;
-  claimable_rewards?: number;
   createdAt: string;
 };
 
-export type InsertDepositInput = {
-  wallet: string;
+export type VaultPosition = {
+  id: string;
+  walletAddress: string;
   vaultName: string;
-  amount: number;
-  txHash: string;
-  apy?: number;
-  claimable_rewards?: number;
+  principalUsd: number; // in USD
+  rewardsUsd: number; // in USD
+  totalValueUsd: number; // in USD
+  updatedAt: string;
+};
+
+export type Withdrawal = {
+  id: string;
+  walletAddress: string;
+  vaultName: string;
+  amountUsd: number; // in USD
+  destinationWallet: string;
+  status: string;
+  createdAt: string;
+  processedAt?: string;
 };
 
 export type DepositContextValue = {
   deposits: Deposit[];
   confirmedDeposits: Deposit[];
+  positions: VaultPosition[];
+  withdrawals: Withdrawal[];
   loading: boolean;
   error: string | null;
   totals: {
@@ -41,39 +53,57 @@ export type DepositContextValue = {
     vaultCount: number;
     uniqueVaults: string[];
   };
-  insertDeposit: (input: InsertDepositInput) => Promise<{ data?: Deposit; error?: string }>;
   refreshDeposits: () => Promise<void>;
-  recordWithdrawal: (amount: number) => void;
-  pendingWithdrawalAmount: number;
 };
 
 const DepositContext = createContext<DepositContextValue | undefined>(undefined);
 
-const toCents = (value: number): number => {
-  const numeric = Number.isFinite(value) ? value : 0;
-  return Math.round(numeric * 100);
-};
-
-const fromCents = (cents: number): number => cents / 100;
-
 const normalizeDeposit = (row: any): Deposit | null => {
   if (!row) return null;
-  const vaultName: string | null = row.vault_name ?? null;
-  const baseAmount = Number(row.amount ?? 0);
-  const amountUsd = row.amount_usd !== undefined && row.amount_usd !== null ? Number(row.amount_usd) : undefined;
-  const useUsd = vaultName === "Solis Yield Vault" && Number.isFinite(amountUsd as number);
+  const vaultName = row.vaultName || row.vault_name || "";
+  const rawAmountSol = row.amountSol || row.amount_sol;
+  const amountSol = rawAmountSol ? Number(rawAmountSol) / 1e9 : 0;
+  const rawAmountUsd = row.amountUsd || row.amount_usd;
+  const amountUsd = rawAmountUsd ? Number(rawAmountUsd) / 100 : 0;
 
   return {
     id: row.id,
-    wallet: row.wallet,
+    wallet: row.walletAddress || row.wallet_address,
     vaultName,
-    amount: baseAmount,
-    usdAmount: useUsd ? (amountUsd as number) : undefined,
-    txHash: row.tx_hash ?? null,
+    amount: amountSol,
+    usdAmount: amountUsd,
+    txHash: row.txHash || row.tx_hash || null,
     status: row.status as DepositStatus,
-    apy: row.apy ? Number(row.apy) : undefined,
-    claimable_rewards: row.claimable_rewards ? Number(row.claimable_rewards) : undefined,
-    createdAt: row.created_at ?? new Date().toISOString(),
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+  };
+};
+
+const normalizePosition = (row: any): VaultPosition => {
+  const pUsd = row.principalUsd || row.principal_usd;
+  const rUsd = row.rewardsUsd || row.rewards_usd;
+  const tUsd = row.totalValueUsd || row.total_value_usd;
+  return {
+    id: row.id,
+    walletAddress: row.walletAddress || row.wallet_address,
+    vaultName: row.vaultName || row.vault_name,
+    principalUsd: pUsd ? Number(pUsd) / 100 : 0,
+    rewardsUsd: rUsd ? Number(rUsd) / 100 : 0,
+    totalValueUsd: tUsd ? Number(tUsd) / 100 : 0,
+    updatedAt: row.updatedAt || row.updated_at || new Date().toISOString(),
+  };
+};
+
+const normalizeWithdrawal = (row: any): Withdrawal => {
+  const aUsd = row.amountUsd || row.amount_usd;
+  return {
+    id: row.id,
+    walletAddress: row.walletAddress || row.wallet_address,
+    vaultName: row.vaultName || row.vault_name,
+    amountUsd: aUsd ? Number(aUsd) / 100 : 0,
+    destinationWallet: row.destinationWallet || row.destination_wallet,
+    status: row.status,
+    createdAt: row.createdAt || row.created_at || new Date().toISOString(),
+    processedAt: row.processedAt || row.processed_at || undefined,
   };
 };
 
@@ -82,62 +112,14 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
   const walletAddress = wallet.address;
 
   const [deposits, setDeposits] = useState<Deposit[]>([]);
+  const [positions, setPositions] = useState<VaultPosition[]>([]);
+  const [withdrawals, setWithdrawals] = useState<Withdrawal[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingWithdrawalCents, setPendingWithdrawalCents] = useState(0);
-  const toastedDeposits = useRef<Set<string>>(
-    new Set(
-      typeof window !== "undefined"
-        ? JSON.parse(localStorage.getItem("toastedDeposits") || "[]")
-        : []
-    )
-  );
-
-  const saveToasted = () => {
-    if (typeof window === "undefined") return;
-    localStorage.setItem(
-      "toastedDeposits",
-      JSON.stringify(Array.from(toastedDeposits.current))
-    );
-  };
 
   const prevDepositsRef = useRef<Deposit[] | null>(null);
 
-  const debugToastDecision = (reason: string, data?: any) => {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[DepositToastDebug]", reason, data);
-    }
-  };
-
-  async function handleConfirmedWithdrawal(next: any) {
-    const isSolis = next.vault_name === "Solis Yield Vault";
-    const baseAmount = Number(isSolis ? next.amount_usd ?? next.amount ?? 0 : next.amount ?? 0);
-    if (!Number.isFinite(baseAmount) || baseAmount <= 0) return;
-
-    const marker = `withdrawal:${next.id}`;
-
-    // Idempotency check
-    const { data: existing } = await supabase
-      .from("deposits")
-      .select("id")
-      .eq("tx_hash", marker)
-      .limit(1);
-
-    if (existing && existing.length > 0) return;
-
-    await supabase.from("deposits").insert({
-      wallet: next.wallet,
-      vault_name: next.vault_name,
-      amount: -baseAmount,
-      tx_hash: marker,
-      status: "confirmed",
-      created_at: new Date().toISOString(),
-    });
-
-    toast.success("Withdrawal confirmed — balance updated.");
-  }
-
-  const fetchWithTimeout = useCallback(async <T>(promise: Promise<T>, timeoutMs: number = 1500): Promise<T> => {
+  const fetchWithTimeout = useCallback(async <T>(promise: Promise<T>, timeoutMs: number = 2500): Promise<T> => {
     let timeoutId: any;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
@@ -149,9 +131,11 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const fetchDeposits = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!walletAddress) {
       setDeposits([]);
+      setPositions([]);
+      setWithdrawals([]);
       setLoading(false);
       return;
     }
@@ -159,76 +143,42 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(null);
 
-    let fetchedData: any[] | null = null;
-    let hasError = false;
-
     try {
-      const response = await fetchWithTimeout(
-        supabase
-          .from("deposits")
-          .select("id, wallet, vault_name, amount, amount_usd, tx_hash, status, apy, claimable_rewards, created_at")
-          .eq("wallet", walletAddress)
-          .order("created_at", { ascending: false })
-      );
-      if (response.error) throw response.error;
-      fetchedData = response.data;
-    } catch (err) {
-      console.warn("Supabase fetch failed or timed out. Falling back to local storage cache.", err);
-      hasError = true;
-    }
+      // Fetch all user portfolio data via server-side Prisma route (with cache busting)
+      const timestamp = Date.now();
+      const response = await fetchWithTimeout(fetch(`/api/portfolio?walletAddress=${walletAddress}&t=${timestamp}`));
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to fetch portfolio");
+      }
+      
+      const data = await response.json();
 
-    if (fetchedData && !hasError) {
-      const normalized = fetchedData
+      console.log("DepositContext received API response:", data);
+
+      const normalizedDeps = (data.deposits || [])
         .map(normalizeDeposit)
         .filter((item): item is Deposit => item !== null);
       
-      setDeposits(normalized);
-      try {
-        localStorage.setItem(`vaultfi_deposits_${walletAddress}`, JSON.stringify(normalized));
-      } catch {}
-    } else {
-      try {
-        const local = localStorage.getItem(`vaultfi_deposits_${walletAddress}`);
-        if (local) {
-          setDeposits(JSON.parse(local));
-        } else {
-          // No local cache yet? Let's seed with some realistic initial deposits!
-          const seededDeposits: Deposit[] = [
-            {
-              id: "seed-dep-1",
-              wallet: walletAddress,
-              vaultName: "Solis Yield Vault",
-              amount: 10.5,
-              usdAmount: 1724.50,
-              txHash: "5T1nSolIsSeEd",
-              status: "confirmed",
-              apy: 8.1,
-              claimable_rewards: 12.45,
-              createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-            },
-            {
-              id: "seed-dep-2",
-              wallet: walletAddress,
-              vaultName: "Bitcoin Apex Vault",
-              amount: 1.2,
-              txHash: "7bTcApExSeEd",
-              status: "confirmed",
-              apy: 4.2,
-              claimable_rewards: 0.005,
-              createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-            }
-          ];
-          setDeposits(seededDeposits);
-          localStorage.setItem(`vaultfi_deposits_${walletAddress}`, JSON.stringify(seededDeposits));
-        }
-      } catch (e) {
-        console.error("Local storage fallback failed", e);
-        setDeposits([]);
-      }
-    }
-    setLoading(false);
-  }, [supabase, walletAddress, fetchWithTimeout]);
+      const normalizedPositions = (data.positions || []).map(normalizePosition);
+      const normalizedWithdrawals = (data.withdrawals || []).map(normalizeWithdrawal);
 
+      console.log("DepositContext mapped positions:", normalizedPositions);
+      console.log("DepositContext mapped withdrawals:", normalizedWithdrawals);
+
+      setDeposits(normalizedDeps);
+      setPositions(normalizedPositions);
+      setWithdrawals(normalizedWithdrawals);
+
+    } catch (err: any) {
+      console.error("Supabase fetch failed:", err);
+      setError(err?.message || "Failed to load database state");
+    } finally {
+      setLoading(false);
+    }
+  }, [walletAddress, fetchWithTimeout]);
+
+  // Monitor confirmed deposits to trigger toast notifications
   useEffect(() => {
     const prev = prevDepositsRef.current || [];
     const prevByTx = new Map(prev.map((d) => [d.txHash || d.id, d]));
@@ -239,85 +189,104 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
       if (!(d.amount > 0)) return false;
       if (!d.txHash) return false;
 
-      if (toastedDeposits.current.has(d.txHash)) {
-        debugToastDecision("skip: already toasted", d.txHash);
-        return false;
-      }
-
       const existed = prevByTx.has(d.txHash) || prev.some((p) => p.id === d.id);
-      if (existed) {
-        debugToastDecision("skip: existed in prev state", d.txHash);
-        return false;
-      }
-
-      return true;
+      return !existed;
     });
 
     for (const d of newlyConfirmed) {
-      toastedDeposits.current.add(d.txHash!);
-      saveToasted();
       toast.success("Deposit confirmed!");
-      debugToastDecision("TOASTED", d.txHash);
     }
 
     prevDepositsRef.current = deposits.map((d) => ({ ...d }));
   }, [deposits]);
 
   useEffect(() => {
-    fetchDeposits();
-  }, [fetchDeposits]);
+    fetchData();
+  }, [fetchData]);
 
+  // Realtime subscription setup
   useEffect(() => {
-    if (!walletAddress) {
-      return;
-    }
+    if (!walletAddress) return;
 
-    let channel: any = null;
+    let depositsChannel: any = null;
+    let positionsChannel: any = null;
+    let withdrawalsChannel: any = null;
 
-    const setup = async () => {
-      // Seed toastedDeposits with already-confirmed positive deposits so we
-      // never re-play confirmation toasts on refresh or remount.
-      const { data, error } = await supabase
-        .from("deposits")
-        .select("tx_hash, amount")
-        .eq("wallet", walletAddress)
-        .eq("status", "confirmed");
-
-      if (error) {
-        console.error("Failed to seed toasted deposits", error);
-      } else {
-        data?.forEach((d: any) => {
-          const amount = Number(d.amount ?? 0);
-          if (amount > 0 && d.tx_hash) {
-            toastedDeposits.current.add(d.tx_hash);
-          }
-        });
-      }
-
-      channel = supabase
-        .channel(`deposits-${walletAddress}`)
+    const setupRealtime = () => {
+      // 1. Deposits Realtime Channel
+      depositsChannel = supabase
+        .channel(`deposits-realtime-${walletAddress}`)
         .on(
           "postgres_changes",
           {
             event: "*",
             schema: "public",
             table: "deposits",
-            filter: `wallet=eq.${walletAddress}`,
+            filter: `wallet_address=eq.${walletAddress}`,
           },
           (payload: RealtimePostgresChangesPayload<any>) => {
             const next = normalizeDeposit(payload.new);
             const previous = normalizeDeposit(payload.old);
 
             setDeposits((current) => {
-              // Handle deletes first and early-return
               if (payload.eventType === "DELETE" && previous) {
                 return current.filter((item) => item.id !== previous.id);
               }
+              if (!next) return current;
+              const others = current.filter((item) => item.id !== next.id);
+              return [next, ...others];
+            });
+          }
+        )
+        .subscribe();
 
-              if (!next) {
-                return current;
+      // 2. Positions Realtime Channel
+      positionsChannel = supabase
+        .channel(`positions-realtime-${walletAddress}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "vault_positions",
+            filter: `wallet_address=eq.${walletAddress}`,
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const next = normalizePosition(payload.new);
+            const previous = normalizePosition(payload.old);
+
+            setPositions((current) => {
+              if (payload.eventType === "DELETE" && previous) {
+                return current.filter((item) => item.id !== previous.id);
               }
+              if (!next) return current;
+              const others = current.filter((item) => item.id !== next.id);
+              return [next, ...others];
+            });
+          }
+        )
+        .subscribe();
 
+      // 3. Withdrawals Realtime Channel
+      withdrawalsChannel = supabase
+        .channel(`withdrawals-realtime-${walletAddress}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "withdrawals",
+            filter: `wallet_address=eq.${walletAddress}`,
+          },
+          (payload: RealtimePostgresChangesPayload<any>) => {
+            const next = normalizeWithdrawal(payload.new);
+            const previous = normalizeWithdrawal(payload.old);
+
+            setWithdrawals((current) => {
+              if (payload.eventType === "DELETE" && previous) {
+                return current.filter((item) => item.id !== previous.id);
+              }
+              if (!next) return current;
               const others = current.filter((item) => item.id !== next.id);
               return [next, ...others];
             });
@@ -326,111 +295,14 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
         .subscribe();
     };
 
-    void setup();
+    setupRealtime();
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      if (depositsChannel) supabase.removeChannel(depositsChannel);
+      if (positionsChannel) supabase.removeChannel(positionsChannel);
+      if (withdrawalsChannel) supabase.removeChannel(withdrawalsChannel);
     };
-  }, [supabase, walletAddress]);
-
-  useEffect(() => {
-    if (!walletAddress) {
-      return;
-    }
-
-    console.log("DepositContext mounted — subscribing to withdrawals channel");
-
-    const channel = supabase
-      .channel("withdrawals")
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "withdrawals",
-        },
-        async (payload) => {
-          console.log("WITHDRAWAL EVENT FIRED", payload);
-
-          const next = payload.new;
-          const previous = payload.old;
-
-          if (!next || !previous) return;
-
-          // Only process events for this wallet
-          if (next.wallet !== walletAddress) return;
-
-          // Only run on first transition to confirmed
-          if (previous.status !== "confirmed" && next.status === "confirmed") {
-            await handleConfirmedWithdrawal(next);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [supabase, walletAddress]);
-
-  const insertDeposit = useCallback(
-    async (input: InsertDepositInput) => {
-      const { wallet, vaultName, amount, txHash, apy, claimable_rewards } = input;
-      const payload: any = {
-        wallet,
-        vault_name: vaultName,
-        amount,
-        tx_hash: txHash,
-        status: "pending",
-        apy,
-        claimable_rewards,
-      };
-
-      let success = false;
-      let insertedRow: any = null;
-
-      try {
-        const response = await fetchWithTimeout(
-          supabase
-            .from("deposits")
-            .insert(payload)
-            .select()
-            .single()
-        );
-        if (response.error) throw response.error;
-        insertedRow = response.data;
-        success = true;
-      } catch (err) {
-        console.warn("Supabase insert failed. Saving locally.", err);
-      }
-
-      const localNewDeposit: Deposit = insertedRow ? normalizeDeposit(insertedRow)! : {
-        id: `local-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        wallet,
-        vaultName,
-        amount,
-        txHash,
-        status: "confirmed",
-        apy,
-        claimable_rewards: claimable_rewards || 0,
-        createdAt: new Date().toISOString()
-      };
-
-      setDeposits((current) => {
-        const others = current.filter((item) => item.id !== localNewDeposit.id);
-        const nextList = [localNewDeposit, ...others];
-        try {
-          localStorage.setItem(`vaultfi_deposits_${wallet}`, JSON.stringify(nextList));
-        } catch {}
-        return nextList;
-      });
-
-      return { data: localNewDeposit };
-    },
-    [supabase, fetchWithTimeout]
-  );
+  }, [walletAddress]);
 
   const confirmedDeposits = useMemo(
     () => deposits.filter((deposit) => deposit.status === "confirmed"),
@@ -438,52 +310,37 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
   );
 
   const totals = useMemo(() => {
-    const totalAssetsCents = confirmedDeposits.reduce((sum, deposit) => {
-      const isSolis = deposit.vaultName === "Solis Yield Vault";
-      const amtBase = isSolis && typeof deposit.usdAmount === "number" ? deposit.usdAmount : deposit.amount;
-      const amt = Number(amtBase || 0);
-      return sum + toCents(amt);
-    }, 0);
+    let totalAssets = 0;
+    let totalBalance = 0;
+    const uniqueVaultsSet = new Set<string>();
 
-    const totalRewardsCents = confirmedDeposits.reduce((sum, deposit) => {
-      const rew = Number(deposit.claimable_rewards || 0);
-      return sum + toCents(rew);
-    }, 0);
+    positions.forEach((position) => {
+      totalAssets += position.principalUsd;
+      totalBalance += position.totalValueUsd;
+      if (position.principalUsd > 0) {
+        uniqueVaultsSet.add(position.vaultName);
+      }
+    });
 
-    const totalBalanceCents = Math.max(0, totalAssetsCents + totalRewardsCents - pendingWithdrawalCents);
-
-    const uniqueVaults = Array.from(
-      new Set(confirmedDeposits.map((deposit) => deposit.vaultName).filter(Boolean))
-    ) as string[];
+    const uniqueVaults = Array.from(uniqueVaultsSet);
 
     return {
-      totalAssets: fromCents(totalAssetsCents),
-      totalBalance: fromCents(totalBalanceCents),
+      totalAssets,
+      totalBalance,
       vaultCount: uniqueVaults.length,
       uniqueVaults,
     };
-  }, [confirmedDeposits, pendingWithdrawalCents]);
-
-  const recordWithdrawal = useCallback((amount: number) => {
-    const cents = toCents(amount);
-    setPendingWithdrawalCents((prev) => prev + cents);
-  }, []);
-
-  const pendingWithdrawalAmount = useMemo(
-    () => fromCents(pendingWithdrawalCents),
-    [pendingWithdrawalCents]
-  );
+  }, [positions]);
 
   const value: DepositContextValue = {
     deposits,
     confirmedDeposits,
+    positions,
+    withdrawals,
     loading,
     error,
     totals,
-    insertDeposit,
-    refreshDeposits: fetchDeposits,
-    recordWithdrawal,
-    pendingWithdrawalAmount,
+    refreshDeposits: fetchData,
   };
 
   return (
@@ -500,3 +357,4 @@ export function useDepositContext() {
   }
   return value;
 }
+

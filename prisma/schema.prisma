@@ -1,6 +1,7 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 generator client {
@@ -8,37 +9,71 @@ generator client {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  wallet    String   @unique
-  createdAt DateTime @default(now())
-  deposits  Deposit[]
-  withdrawals Withdrawal[]
+  id            String          @id @default(uuid())
+  walletAddress String          @unique @map("wallet_address")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  deposits      Deposit[]
+  withdrawals   Withdrawal[]
+  positions     VaultPosition[]
+
+  @@map("users")
 }
 
 model Deposit {
-  id        String   @id @default(uuid())
-  wallet    String
-  user      User     @relation(fields: [wallet], references: [wallet])
-  amount    Float
-  status    DepositStatus @default(pending)
-  vaultName String?  
-  txHash    String?
-  apy       Float?
-  claimable_rewards Float @default(0)
-  createdAt DateTime @default(now())
+  id              String    @id @default(uuid())
+  walletAddress   String    @map("wallet_address")
+  vaultName       String    @map("vault_name")
+  amountSol       BigInt    @map("amount_sol")      // Integer lamports
+  amountUsd       Int       @map("amount_usd")      // Integer cents
+  txHash          String    @unique @map("tx_hash")
+  treasuryAddress String    @map("treasury_address")
+  status          String    @default("pending")     // "pending" | "confirmed" | "failed"
+  confirmedAt     DateTime? @map("confirmed_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  user            User      @relation(fields: [walletAddress], references: [walletAddress])
+
+  @@map("deposits")
 }
 
 model Withdrawal {
-  id        String   @id @default(uuid())
-  userId    String
-  amount    Float
-  txHash    String?
-  createdAt DateTime @default(now())
+  id                String    @id @default(uuid())
+  walletAddress     String    @map("wallet_address")
+  vaultName       String    @map("vault_name")
+  amountUsd         Int       @map("amount_usd")      // Integer cents
+  destinationWallet String    @map("destination_wallet")
+  status            String    @default("pending")     // "pending" | "processed" | "failed"
+  createdAt         DateTime  @default(now()) @map("created_at")
+  processedAt       DateTime? @map("processed_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user              User      @relation(fields: [walletAddress], references: [walletAddress])
+
+  @@map("withdrawals")
 }
 
-enum DepositStatus {
-  pending
-  confirmed
+model VaultPosition {
+  id            String   @id @default(uuid())
+  walletAddress String   @map("wallet_address")
+  vaultName     String   @map("vault_name")
+  principalUsd  Int      @map("principal_usd")   // Integer cents
+  rewardsUsd    Int      @map("rewards_usd")     // Integer cents
+  totalValueUsd Int      @map("total_value_usd") // Integer cents
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user          User     @relation(fields: [walletAddress], references: [walletAddress])
+
+  @@unique([walletAddress, vaultName])
+  @@map("vault_positions")
+}
+
+model TreasuryLedger {
+  id            String   @id @default(uuid())
+  txHash        String?  @unique @map("tx_hash")
+  direction     String   // "IN" | "OUT"
+  amount        BigInt   // Lamports for SOL, cents for USD
+  asset         String   // "SOL" | "USD"
+  verified      Boolean  @default(false)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("treasury_ledger")
 }
