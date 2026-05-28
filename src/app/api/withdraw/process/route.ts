@@ -81,11 +81,11 @@ export async function POST(req: Request) {
 
     // 4. Update ledger and user positions inside an atomic transaction
     await prisma.$transaction(async (txClient) => {
-      // Mark withdrawal as processed (using "confirmed" to satisfy DB constraint)
+      // Mark withdrawal as processed
       await txClient.withdrawal.update({
         where: { id: withdrawal_id },
         data: {
-          status: "confirmed",
+          status: "processed",
           processedAt: new Date(),
         },
       });
@@ -127,11 +127,11 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      message: `Withdrawal request processed and confirmed successfully.`,
+      message: `Withdrawal request processed successfully.`,
       tx_hash: signature,
       withdrawal: {
         id: withdrawal.id,
-        status: "confirmed",
+        status: "processed",
         amount_usd: amountUsd,
       }
     });
