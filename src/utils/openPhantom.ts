@@ -1,25 +1,10 @@
-/**
- * Phantom Deep-Link Launcher with Custom Scheme + Universal Link Fallback
- * 
- * Strategy:
- * 1. Try custom deep-link first: phantom://app/vault-deposit?url=<encoded_url>
- * 2. If that fails (Phantom not installed), fallback to Universal Link
- * 3. If Universal Link fails, redirect to install page after 2.5s
- * 
- * This implementation includes:
- * - Intent tracking via localStorage
- * - Dual fallback strategy (custom scheme → universal link → install page)
- * - Automatic cleanup on successful app launch
- */
+import { isSafari } from "./mobile";
 
 // Intent flag key for tracking connection attempts
 const INTENT_KEY = 'vaultfi_phantom_connect_pending';
 
-// Time to wait before trying Universal Link fallback (500ms)
-const CUSTOM_SCHEME_TIMEOUT_MS = 500;
-
-// Time to wait before assuming Phantom didn't open at all (2.5 seconds total)
-const FALLBACK_DELAY_MS = 2500;
+// Time to wait before assuming Phantom didn't open at all (2.0 seconds total)
+const FALLBACK_DELAY_MS = 2000;
 
 // Fallback URL if Phantom is not installed
 const PHANTOM_INSTALL_URL = 'https://phantom.app/download';
@@ -28,22 +13,13 @@ const PHANTOM_INSTALL_URL = 'https://phantom.app/download';
  * Open the current page in Phantom's in-app browser
  * 
  * Strategy:
- * 1. Custom Scheme: phantom://app/vault-deposit?url=<encoded_url>
- *    - Fastest, opens directly if Phantom is installed
- *    - If fails (500ms timeout) → try Universal Link
- * 
- * 2. Universal Link: https://phantom.app/ul/browse?url=<encoded_url>
- *    - More reliable fallback
- *    - Works even if custom scheme blocked
- * 
- * 3. Install Page: https://phantom.app/download
- *    - Last resort if neither worked (2.5s timeout)
- * 
- * Flow:
- * 1. Sets intent flag in localStorage (vaultfi_phantom_connect_pending = "1")
- * 2. Tries custom deep-link first
- * 3. Waits 500ms, if page still visible → tries Universal Link
- * 4. Waits 2.5s total, if page still visible → redirects to install page
+ * 1. Telegram WebApp: Opens the Universal Link using Telegram's native openLink API.
+ * 2. iOS Safari: Redirects directly to the Universal Link. Safari natively handles
+ *    Universal Links correctly—opening the app if installed, or loading the webpage/App Store fallback.
+ * 3. Third-party iOS browsers (Chrome, Brave, Telegram in-app browser):
+ *    Uses custom scheme 'phantom://browse/...' to force app opening. Sets a 2.0s fallback timer
+ *    to redirect to the Universal Link if Phantom is not installed, protected by blur/pagehide
+ *    event listeners to prevent double-redirects when the app successfully opens.
  * 
  * @param url - Optional URL to open in Phantom. Defaults to current window.location.href
  */
@@ -51,12 +27,9 @@ export function openPhantom(url?: string): void {
     if (typeof window === 'undefined') return;
 
     // Use provided URL or current page URL
-    // This ensures the user returns to the exact same page after Phantom opens
     const targetUrl = url || window.location.href;
 
-    // STEP 1: Store intent flag BEFORE any navigation
-    // This flag will be checked when the page loads inside Phantom's in-app browser
-    // to automatically trigger wallet connection
+    // Store intent flag BEFORE any navigation
     try {
         localStorage.setItem(INTENT_KEY, '1');
         console.log('[Phantom Deep-Link] Intent flag set');
@@ -64,19 +37,13 @@ export function openPhantom(url?: string): void {
         console.error('[Phantom Deep-Link] Failed to set intent flag:', e);
     }
 
-    // STEP 2: Encode the URL exactly once
-    // IMPORTANT: Single encoding only - double encoding will break the deep-link
     const encodedUrl = encodeURIComponent(targetUrl);
+    const origin = typeof window !== 'undefined' ? window.location.origin : targetUrl;
+    const encodedRef = encodeURIComponent(origin);
 
-    // STEP 3a: Build custom deep-link (primary method)
-    // Format: phantom://app/vault-deposit?url=<encoded_url>
-    // This is faster and more direct if Phantom is installed
-    const customDeepLink = `phantom://app/vault-deposit?url=${encodedUrl}`;
-
-    // STEP 3b: Build Universal Link (fallback method)
-    // Format: https://phantom.app/ul/browse?url=<encoded_url>
-    // This works even if custom scheme is blocked or fails
-    const universalLink = `https://phantom.app/ul/browse?url=${encodedUrl}`;
+    // Correct deep link formats
+    const customDeepLink = `phantom://browse/${encodedUrl}?ref=${encodedRef}`;
+    const universalLink = `https://phantom.app/ul/browse/${encodedUrl}?ref=${encodedRef}`;
 
     console.log('[Phantom Deep-Link] Starting deep-link flow', {
         targetUrl,
@@ -85,55 +52,69 @@ export function openPhantom(url?: string): void {
         intentSet: true
     });
 
-    // Track if app has opened
+    // 1. Check if running inside Telegram WebApp (Mini App context)
+    const anyWindow = window as any;
+    const tg = anyWindow?.Telegram?.WebApp;
+    if (tg && typeof tg.openLink === 'function') {
+        console.log('[Phantom Deep-Link] Telegram WebApp detected, using native openLink');
+        tg.openLink(universalLink);
+        return;
+    }
+
+    // 2. iOS Safari native Universal Link handling
+    if (isSafari()) {
+        console.log('[Phantom Deep-Link] Native Safari iOS detected. Redirecting directly to Universal Link.');
+        window.location.href = universalLink;
+        return;
+    }
+
+    // 3. Third-party browsers (Chrome iOS, Brave, Telegram in-app browser)
+    console.log('[Phantom Deep-Link] Third-party browser / client detected. Using Custom Scheme with fallback.');
+
     let appOpened = false;
 
-    // STEP 4: Set ultimate fallback timer (2.5s total)
-    // If Phantom doesn't open at all within 2.5s, redirect to install page
-    const ultimateFallbackTimer = setTimeout(() => {
-        if (!appOpened) {
-            console.log('[Phantom Deep-Link] Ultimate fallback - redirecting to install page');
-
-            // Clear intent flag since nothing worked
-            try {
-                localStorage.removeItem(INTENT_KEY);
-            } catch (e) {
-                // Ignore errors when clearing
-            }
-
-            // Redirect to Phantom install page
-            window.location.href = PHANTOM_INSTALL_URL;
+    // Timer to redirect to download page if custom scheme doesn't open the app
+    const fallbackTimer = setTimeout(() => {
+        if (!appOpened && !document.hidden) {
+            console.log('[Phantom Deep-Link] Fallback timer expired. Redirecting to Universal Link.');
+            window.location.href = universalLink;
         }
     }, FALLBACK_DELAY_MS);
 
-    // STEP 5: Listen for visibility change to detect if app opened
-    // If Phantom opens successfully, the page will be hidden (user switched to Phantom app)
+    // Cleanup helper for listeners and timer
+    const cleanup = () => {
+        appOpened = true;
+        clearTimeout(fallbackTimer);
+        window.removeEventListener('pagehide', handlePageHide);
+        window.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('blur', handleBlur);
+    };
+
+    const handlePageHide = () => {
+        console.log('[Phantom Deep-Link] pagehide event fired - app opened');
+        cleanup();
+    };
+
     const handleVisibilityChange = () => {
         if (document.hidden) {
-            console.log('[Phantom Deep-Link] Page hidden - Phantom opened successfully');
-            appOpened = true;
-            clearTimeout(ultimateFallbackTimer);
-            clearTimeout(universalLinkFallbackTimer);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            console.log('[Phantom Deep-Link] visibilitychange (hidden) event fired - app opened');
+            cleanup();
         }
     };
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const handleBlur = () => {
+        console.log('[Phantom Deep-Link] window blur event fired - app prompt showing or app opened');
+        cleanup();
+    };
 
-    // STEP 6: Try custom deep-link FIRST
-    // This is the fastest method if Phantom is installed
-    console.log('[Phantom Deep-Link] Attempting custom scheme:', customDeepLink);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleBlur);
+
+    // Trigger custom scheme redirect
     window.location.href = customDeepLink;
-
-    // STEP 7: Set Universal Link fallback timer (500ms)
-    // If custom scheme didn't work (page still visible after 500ms), try Universal Link
-    const universalLinkFallbackTimer = setTimeout(() => {
-        if (!appOpened && !document.hidden) {
-            console.log('[Phantom Deep-Link] Custom scheme timeout - trying Universal Link:', universalLink);
-            window.location.href = universalLink;
-        }
-    }, CUSTOM_SCHEME_TIMEOUT_MS);
 }
+
 
 /**
  * Check if there's a pending Phantom connect intent

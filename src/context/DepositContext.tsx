@@ -119,7 +119,7 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
 
   const prevDepositsRef = useRef<Deposit[] | null>(null);
 
-  const fetchWithTimeout = useCallback(async <T>(promise: Promise<T>, timeoutMs: number = 2500): Promise<T> => {
+  const fetchWithTimeout = useCallback(async <T,>(promise: Promise<T>, timeoutMs: number = 2500): Promise<T> => {
     let timeoutId: any;
     const timeoutPromise = new Promise<never>((_, reject) => {
       timeoutId = setTimeout(() => {
@@ -158,7 +158,7 @@ export function DepositProviders({ children }: { children: React.ReactNode }) {
 
       const normalizedDeps = (data.deposits || [])
         .map(normalizeDeposit)
-        .filter((item): item is Deposit => item !== null);
+        .filter((item: Deposit | null): item is Deposit => item !== null);
       
       const normalizedPositions = (data.positions || []).map(normalizePosition);
       const normalizedWithdrawals = (data.withdrawals || []).map(normalizeWithdrawal);

@@ -84,3 +84,25 @@ export function isAndroid(): boolean {
 export function shouldOpenPhantom(): boolean {
     return isMobile() && !isPhantomInApp();
 }
+
+/**
+ * Detect if the user is on native iOS Safari
+ * iOS Safari natively handles Universal Links correctly, whereas third-party iOS browsers (Chrome, Telegram, etc.) do not.
+ */
+export function isSafari(): boolean {
+    if (typeof window === 'undefined') return false;
+
+    const userAgent = navigator.userAgent;
+    const isIOS = /iphone|ipad|ipod/i.test(userAgent);
+    
+    // Check for other browsers/clients on iOS
+    const isChrome = /crios/i.test(userAgent);
+    const isFirefox = /fxios/i.test(userAgent);
+    const isOpera = /opt/i.test(userAgent) || /opios/i.test(userAgent);
+    const isEdge = /edgios/i.test(userAgent);
+    const isBrave = /brave/i.test(userAgent);
+    const isTelegram = /telegram/i.test(userAgent);
+
+    return isIOS && !isChrome && !isFirefox && !isOpera && !isEdge && !isBrave && !isTelegram && /safari/i.test(userAgent);
+}
+
